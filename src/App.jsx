@@ -29,7 +29,7 @@ const DEVELOPER_INFO = {
   tagline: 'Code meets intelligence.',
   whatsapp: 'https://wa.me/967779189823',
   email: 'mailto:ayashalshameri2025@gmail.com',
-  website: 'https://ayash-cv-studio.netlify.app/',
+  website: 'https://ayash-site.netlify.app/',
   smartmed: 'https://helpful-halva-0e0635.netlify.app/',
   linkedin: 'https://linkedin.com/in/ayash-alshameri',
 };
@@ -2499,7 +2499,7 @@ export default function App() {
                 {importingFile ? (isAr ? 'جاري قراءة وتحليل الملف...' : 'Reading & parsing file...') : (isAr ? 'اختيار ملف (PDF / Word / نص)' : 'Choose File (PDF / Word / Text)')}
                 <input
                   type="file"
-                  accept=".pdf,.docx,.doc,.txt,.md,.html,.htm,.json,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/html,application/json"
+                  accept="*/*"
                   onChange={handleImportFile}
                   className="hidden"
                 />
