@@ -389,7 +389,7 @@ function parseRawCVText(rawText, isAr) {
 
   // 1. Break BEFORE any Arabic ordinal section prefix (أولاً:, ثانياً:, ثالثاً:, ...)
   clean = clean.replace(
-    /(?:^|\s)((?:أول[ااً]|ثاني[ااً]|ثالث[ااً]|رابع[ااً]|خامس[ااً]|سادس[ااً]|سابع[ااً]|ثامن[ااً]|تاسع[ااً]|عاشر[ااً])\s*[:：\-])/g,
+    /(?:^|\n|\s)((?:[أا]ول|[ثت]اني|ثالث|رابع|خامس|سادس|سابع|ثامن|تاسع|عاشر)(?:[\u064B]?ا[\u064B]?|[\u064B])\s*[:：\-])/g,
     '\n###ORD###$1'
   );
 
@@ -427,7 +427,7 @@ function parseRawCVText(rawText, isAr) {
 
     if (l.startsWith('###ORD###')) {
       l = l.replace('###ORD###', '').trim();
-      const stripped = l.replace(/^(?:أول[ااً]|ثاني[ااً]|ثالث[ااً]|رابع[ااً]|خامس[ااً]|سادس[ااً]|سابع[ااً]|ثامن[ااً]|تاسع[ااً]|عاشر[ااً])\s*[:：\-]\s*/i, '').trim();
+      const stripped = l.replace(/^(?:[أا]ول|[ثت]اني|ثالث|رابع|خامس|سادس|سابع|ثامن|تاسع|عاشر)(?:[\u064B]?ا[\u064B]?|[\u064B])\s*[:：\-]\s*/i, '').trim();
       let matchedHead = null;
       for (const h of standardHeadings) {
         const m = stripped.match(h.rx);
