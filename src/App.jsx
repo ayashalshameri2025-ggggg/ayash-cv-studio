@@ -1,23 +1,22 @@
 import React, { useState, useMemo } from 'react';
 import {
-  FileText, Sparkles, Shield, Download, Globe, Layout, CheckCircle2,
+  Sparkles, Shield, Download, Globe, Layout, CheckCircle2,
   ChevronRight, ChevronLeft, Plus, Trash2, Eye, Palette, ArrowUp, ArrowDown,
-  RotateCcw, ZoomIn, ZoomOut, User, Briefcase, GraduationCap, Wrench,
-  Award, FolderGit2, Languages, HeartHandshake, Users, Printer, FileDown,
-  Menu, X, ChevronDown, Lock, Layers, Sliders, Upload, AlertTriangle
+  RotateCcw, ZoomIn, ZoomOut, Printer, FileDown, Menu, X, ChevronDown,
+  Lock, Upload, AlertTriangle, Camera, ImageOff, Info
 } from 'lucide-react';
 
 const TEMPLATES = [
-  { id: 'classic', nameAr: 'الكلاسيكي الرسمي', nameEn: 'Professional Classic', descAr: 'تصميم رسمي متوازن يناسب الشركات والجهات الحكومية.', descEn: 'Formal balanced layout ideal for corporate and government roles.', layout: 'top-header', tag: 'Corporate' },
-  { id: 'executive', nameAr: 'الإداري العصري', nameEn: 'Modern Executive', descAr: 'ترويسة داكنة فخمة مع عمود جانبي للمهارات واللغات.', descEn: 'Executive dark header with a structured sidebar for skills.', layout: 'sidebar-left', tag: 'Executive' },
-  { id: 'minimal', nameAr: 'البسيط الأنيق', nameEn: 'Minimal Clean', descAr: 'مساحات بيضاء مريحة وخطوط واضحة تبرز المحتوى.', descEn: 'Clean whitespace and crisp typography that puts content first.', layout: 'minimal', tag: 'Minimal' },
-  { id: 'creative', nameAr: 'الإبداعي للمصممين', nameEn: 'Creative Portfolio', descAr: 'شريط جانبي ملون وتوزيع جريء للمبدعين والمطورين.', descEn: 'Bold colored sidebar crafted for designers and creatives.', layout: 'creative-side', tag: 'Creative' },
-  { id: 'ats', nameAr: 'متوافق مع ATS', nameEn: 'ATS Friendly', descAr: 'عمود واحد نظيف مصمم لاجتياز أنظمة الفرز الآلي.', descEn: 'Single-column structure engineered for ATS scanners.', layout: 'ats', tag: 'ATS' },
-  { id: 'technical', nameAr: 'مطور البرمجيات', nameEn: 'Technical Developer', descAr: 'لمسة تقنية مخصصة للمبرمجين ومهندسي الذكاء الاصطناعي.', descEn: 'Tech-focused layout tailored for software & AI engineers.', layout: 'tech', tag: 'Tech' },
-  { id: 'academic', nameAr: 'الأكاديمي والبحثي', nameEn: 'Academic CV', descAr: 'يركز على التعليم والأبحاث والشهادات الأكاديمية.', descEn: 'Highlights education, publications, and academic honors.', layout: 'academic', tag: 'Academic' },
-  { id: 'medical', nameAr: 'الكوادر الطبية', nameEn: 'Medical Professional', descAr: 'تصميم هادئ ومنظم للأطباء والصيادلة والكوادر الصحية.', descEn: 'Calm, structured layout for doctors and healthcare staff.', layout: 'medical', tag: 'Medical' },
-  { id: 'graduate', nameAr: 'الخريجين الجدد', nameEn: 'Fresh Graduate', descAr: 'يبرز التعليم والمشاريع والمهارات قبل الخبرة العملية.', descEn: 'Emphasizes education, projects, and skills for new grads.', layout: 'graduate', tag: 'Graduate' },
-  { id: 'international', nameAr: 'الاحترافي الدولي', nameEn: 'International Professional', descAr: 'معيار عالمي أنيق للتقديم على الوظائف والمنح الدولية.', descEn: 'Global standard layout for international jobs and grants.', layout: 'international', tag: 'Global' },
+  { id: 'classic', nameAr: 'الكلاسيكي الرسمي', nameEn: 'Professional Classic', descAr: 'ترويسة متوسطة رسمية وخطوط فاصلة تقليدية للشركات والجهات الحكومية.', descEn: 'Centered formal header with classic dividers for corporate roles.', layout: 'centered-classic', tag: 'Corporate' },
+  { id: 'executive', nameAr: 'الإداري العصري', nameEn: 'Modern Executive', descAr: 'ترويسة داكنة فخمة مع عمود جانبي للمهارات واللغات والشهادات.', descEn: 'Executive dark banner with a structured sidebar for skills.', layout: 'dark-sidebar', tag: 'Executive' },
+  { id: 'minimal', nameAr: 'البسيط الأنيق', nameEn: 'Minimal Clean', descAr: 'مساحات بيضاء مريحة وتوزيع متوازن بين الاسم وبيانات التواصل.', descEn: 'Generous whitespace with an asymmetric split header.', layout: 'asymmetric-minimal', tag: 'Minimal' },
+  { id: 'creative', nameAr: 'الإبداعي للمصممين', nameEn: 'Creative Portfolio', descAr: 'عمود جانبي ملون بالكامل يضم الصورة والاسم والمهارات بجرأة.', descEn: 'Full-height colored sidebar featuring photo, name, and skills.', layout: 'full-color-sidebar', tag: 'Creative' },
+  { id: 'ats', nameAr: 'متوافق مع ATS', nameEn: 'ATS Friendly', descAr: 'عمود واحد نظيف أحادي اللون مصمم لاجتياز أنظمة الفرز الآلي.', descEn: 'Clean monochrome single-column built for ATS scanners.', layout: 'ats-single', tag: 'ATS' },
+  { id: 'technical', nameAr: 'مطور البرمجيات', nameEn: 'Technical Developer', descAr: 'تصميم تقني بلمسة برمجية يبرز المشاريع والمهارات التقنية.', descEn: 'Tech-inspired header highlighting projects and stack.', layout: 'tech-grid', tag: 'Tech' },
+  { id: 'academic', nameAr: 'الأكاديمي والبحثي', nameEn: 'Academic CV', descAr: 'يُقدّم التعليم والشهادات الأكاديمية في الصدارة بأسلوب رسمي.', descEn: 'Prioritizes education, degrees, and certifications at the top.', layout: 'academic-top', tag: 'Academic' },
+  { id: 'medical', nameAr: 'الكوادر الطبية', nameEn: 'Medical Professional', descAr: 'شريط طبي هادئ وإبراز للتخصص وسنوات الخبرة للكوادر الصحية.', descEn: 'Calm clinical styling highlighting specialty and experience.', layout: 'medical-split', tag: 'Medical' },
+  { id: 'graduate', nameAr: 'الخريجين الجدد', nameEn: 'Fresh Graduate', descAr: 'يبرز التعليم والمشاريع والمهارات والتطوع قبل الخبرة العملية.', descEn: 'Highlights education, projects, and skills first for new grads.', layout: 'graduate-focus', tag: 'Graduate' },
+  { id: 'international', nameAr: 'الاحترافي الدولي', nameEn: 'International Professional', descAr: 'ترويسة بطاقية حديثة وشبكة سفلية منظمة للتقديم الدولي.', descEn: 'Global standard card header with balanced two-column footer grid.', layout: 'global-card', tag: 'Global' },
 ];
 
 const EMPTY_CV = {
@@ -156,15 +155,24 @@ const DEFAULT_DESIGN = {
   fontSize: 'base',
   headingStyle: 'underline',
   showPhoto: true,
-  spacing: 'normal',
-  margins: 'normal',
+  photoShape: 'circle', // circle | rounded | square
+  photoSize: 'md', // sm | md | lg
+  spacing: 'normal', // compact | normal | relaxed
+  margins: 'normal', // compact | normal | wide
 };
 
 const COLOR_PRESETS = ['#2563EB', '#0B1020', '#7C3AED', '#0F766E', '#B91C1C', '#1D4ED8', '#334155'];
 
+const escapeHtml = (str = '') =>
+  String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
 export default function App() {
   const [lang, setLang] = useState('ar');
-  const [view, setView] = useState('landing'); // landing | templates | builder | export
+  const [view, setView] = useState('landing');
   const [selectedTemplate, setSelectedTemplate] = useState('executive');
   const [previewTemplateModal, setPreviewTemplateModal] = useState(null);
   const [cv, setCv] = useState(EMPTY_CV);
@@ -174,12 +182,31 @@ export default function App() {
   const [showDesignPanel, setShowDesignPanel] = useState(false);
   const [zoom, setZoom] = useState(0.75);
   const [mobileMenu, setMobileMenu] = useState(false);
-  const [mobileTab, setMobileTab] = useState('edit'); // edit | preview
+  const [mobileTab, setMobileTab] = useState('edit');
   const [openFaq, setOpenFaq] = useState(0);
   const [showClearModal, setShowClearModal] = useState(false);
+  const [toast, setToast] = useState('');
 
   const isAr = lang === 'ar';
   const dir = isAr ? 'rtl' : 'ltr';
+
+  const notify = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2800);
+  };
+
+  const completeness = useMemo(() => {
+    let score = 0;
+    if (cv.personal.fullName) score += 20;
+    if (cv.personal.jobTitle) score += 10;
+    if (cv.personal.email || cv.personal.phone) score += 10;
+    if (cv.summary.bio) score += 15;
+    if (cv.experience.length > 0) score += 15;
+    if (cv.education.length > 0) score += 15;
+    if (cv.skills.length > 0) score += 10;
+    if (cv.languages.length > 0 || cv.projects.length > 0 || cv.certifications.length > 0) score += 5;
+    return Math.min(100, score);
+  }, [cv]);
 
   const t = useMemo(() => ({
     navHome: isAr ? 'الرئيسية' : 'Home',
@@ -228,7 +255,7 @@ export default function App() {
   const moveSection = (index, direction) => {
     const newArr = [...sections];
     const target = index + direction;
-    if (target < 0 || target >= newArr.length) return;
+    if (target < 1 || target >= newArr.length) return;
     [newArr[index], newArr[target]] = [newArr[target], newArr[index]];
     setSections(newArr);
   };
@@ -254,34 +281,139 @@ export default function App() {
   const handlePhotoUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      notify(isAr ? 'الرجاء اختيار ملف صورة صالح' : 'Please select a valid image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      notify(isAr ? 'حجم الصورة كبير جدًا (الحد الأقصى 5MB)' : 'Image too large (Max 5MB)');
+      return;
+    }
     const reader = new FileReader();
-    reader.onload = () => updatePersonal('photo', reader.result);
+    reader.onload = () => {
+      updatePersonal('photo', reader.result);
+      setDesign(d => ({ ...d, showPhoto: true }));
+      notify(isAr ? 'تمت إضافة الصورة الشخصية بنجاح' : 'Profile photo added');
+    };
     reader.readAsDataURL(file);
+  };
+
+  const handleRemovePhoto = () => {
+    updatePersonal('photo', '');
+    notify(isAr ? 'تمت إزالة الصورة الشخصية' : 'Profile photo removed');
   };
 
   const handleExportPDF = () => {
     window.print();
   };
 
+  // Dedicated clean inline-CSS Word generator compatible with MS Word & WPS Office
   const handleExportWord = () => {
-    const el = document.getElementById('cv-a4-preview');
-    if (!el) return;
-    const htmlContent = `
-      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40' dir='${dir}' lang='${lang}'>
+    const accent = selectedTemplate === 'ats' ? '#0B1020' : selectedTemplate === 'medical' ? '#0F766E' : design.accentColor;
+    const align = isAr ? 'right' : 'left';
+    const visibleMap = Object.fromEntries(sections.map(s => [s.id, s.visible]));
+    const showImg = design.showPhoto && cv.personal.photo && selectedTemplate !== 'ats';
+    const imgSizePx = design.photoSize === 'sm' ? 70 : design.photoSize === 'lg' ? 110 : 90;
+
+    const contacts = [
+      cv.personal.email, cv.personal.phone, cv.personal.location,
+      cv.personal.address, cv.personal.linkedin, cv.personal.github, cv.personal.website
+    ].filter(Boolean).map(escapeHtml).join(' &nbsp;|&nbsp; ');
+
+    const sectionTitle = (title) =>
+      `<h2 style="color:${accent};font-size:13pt;border-bottom:2px solid ${accent};padding-bottom:4px;margin-top:16px;margin-bottom:8px;text-align:${align};">${escapeHtml(title)}</h2>`;
+
+    const blocks = sections.filter(s => s.id !== 'personal' && visibleMap[s.id]).map(s => {
+      const id = s.id;
+      if (id === 'summary' && (cv.summary.bio || cv.summary.objective)) {
+        return `${sectionTitle(isAr ? 'النبذة المهنية' : 'Professional Summary')}
+          ${cv.summary.bio ? `<p style="margin:4px 0;line-height:1.6;">${escapeHtml(cv.summary.bio)}</p>` : ''}
+          ${cv.summary.objective ? `<p style="margin:4px 0;color:#475569;">${escapeHtml(cv.summary.objective)}</p>` : ''}
+          ${(cv.summary.specialty || cv.summary.yearsExp) ? `<p style="margin:4px 0;font-size:10pt;color:#334155;">${cv.summary.specialty ? `<b>${isAr ? 'التخصص:' : 'Specialty:'}</b> ${escapeHtml(cv.summary.specialty)} &nbsp;&nbsp;` : ''}${cv.summary.yearsExp ? `<b>${isAr ? 'سنوات الخبرة:' : 'Experience:'}</b> ${escapeHtml(cv.summary.yearsExp)}` : ''}</p>` : ''}`;
+      }
+      if (id === 'experience' && cv.experience.length > 0) {
+        return `${sectionTitle(isAr ? 'الخبرات المهنية' : 'Work Experience')}
+          ${cv.experience.map(e => `
+            <div style="margin-bottom:10px;">
+              <p style="margin:0;font-weight:bold;font-size:11.5pt;">${escapeHtml(e.role)} <span style="font-weight:normal;color:#64748b;font-size:10pt;">(${escapeHtml(e.start)}${e.end ? ` - ${escapeHtml(e.end)}` : ''})</span></p>
+              <p style="margin:2px 0;color:${accent};font-weight:bold;font-size:10.5pt;">${escapeHtml(e.company)}${e.location ? ` — ${escapeHtml(e.location)}` : ''}</p>
+              ${e.description ? `<p style="margin:3px 0;line-height:1.5;">${escapeHtml(e.description)}</p>` : ''}
+              ${e.achievements ? `<p style="margin:2px 0;color:#334155;font-size:10pt;">★ ${escapeHtml(e.achievements)}</p>` : ''}
+            </div>`).join('')}`;
+      }
+      if (id === 'education' && cv.education.length > 0) {
+        return `${sectionTitle(isAr ? 'التعليم' : 'Education')}
+          ${cv.education.map(ed => `
+            <div style="margin-bottom:8px;">
+              <p style="margin:0;font-weight:bold;">${escapeHtml(ed.degree)} ${ed.major ? `- ${escapeHtml(ed.major)}` : ''} <span style="font-weight:normal;color:#64748b;font-size:10pt;">(${escapeHtml(ed.start)}${ed.end ? ` - ${escapeHtml(ed.end)}` : ''})</span></p>
+              <p style="margin:2px 0;color:#475569;font-size:10.5pt;">${escapeHtml(ed.institution)}${ed.gpa ? ` — ${escapeHtml(ed.gpa)}` : ''}</p>
+            </div>`).join('')}`;
+      }
+      if (id === 'skills' && cv.skills.length > 0) {
+        return `${sectionTitle(isAr ? 'المهارات' : 'Skills')}
+          <p style="margin:4px 0;line-height:1.8;">${cv.skills.map(sk => `<span style="background:#f1f5f9;border:1px solid #cbd5e1;padding:2px 8px;margin:2px;">${escapeHtml(sk.name)}${sk.level ? ` (${escapeHtml(sk.level)})` : ''}</span>`).join(' &nbsp; ')}</p>`;
+      }
+      if (id === 'projects' && cv.projects.length > 0) {
+        return `${sectionTitle(isAr ? 'المشاريع' : 'Projects')}
+          ${cv.projects.map(p => `
+            <div style="margin-bottom:8px;">
+              <p style="margin:0;font-weight:bold;">${escapeHtml(p.name)} ${p.link ? `<span style="font-weight:normal;color:${accent};font-size:9.5pt;">(${escapeHtml(p.link)})</span>` : ''}</p>
+              ${p.tech ? `<p style="margin:2px 0;color:${accent};font-size:10pt;">${escapeHtml(p.tech)}</p>` : ''}
+              ${p.description ? `<p style="margin:2px 0;">${escapeHtml(p.description)}</p>` : ''}
+            </div>`).join('')}`;
+      }
+      if (id === 'certifications' && cv.certifications.length > 0) {
+        return `${sectionTitle(isAr ? 'الدورات والشهادات' : 'Certifications')}
+          <ul style="margin:4px 0;padding-${align}:18px;">
+            ${cv.certifications.map(c => `<li style="margin-bottom:4px;"><b>${escapeHtml(c.title)}</b> — ${escapeHtml(c.issuer)}${c.date ? ` (${escapeHtml(c.date)})` : ''}${c.link ? ` [${escapeHtml(c.link)}]` : ''}</li>`).join('')}
+          </ul>`;
+      }
+      if (id === 'languages' && cv.languages.length > 0) {
+        return `${sectionTitle(isAr ? 'اللغات' : 'Languages')}
+          <p style="margin:4px 0;">${cv.languages.map(l => `<b>${escapeHtml(l.name)}:</b> ${escapeHtml(l.level)}`).join(' &nbsp;&nbsp;|&nbsp;&nbsp; ')}</p>`;
+      }
+      if (id === 'volunteering' && cv.volunteering.length > 0) {
+        return `${sectionTitle(isAr ? 'الأعمال التطوعية' : 'Volunteering')}
+          ${cv.volunteering.map(v => `<p style="margin:4px 0;"><b>${escapeHtml(v.title)}</b> — ${escapeHtml(v.org)}${v.period ? ` (${escapeHtml(v.period)})` : ''}${v.details ? `<br/>${escapeHtml(v.details)}` : ''}</p>`).join('')}`;
+      }
+      if (id === 'references' && cv.references.length > 0) {
+        return `${sectionTitle(isAr ? 'المراجع' : 'References')}
+          ${cv.references.map(r => `<p style="margin:3px 0;"><b>${escapeHtml(r.name)}</b>${r.role ? ` — ${escapeHtml(r.role)}` : ''}${r.contact ? ` — ${escapeHtml(r.contact)}` : ''}</p>`).join('')}`;
+      }
+      const custom = cv.customSections.find(c => c.id === id);
+      if (custom && (custom.title || custom.content)) {
+        return `${sectionTitle(custom.title)}<p style="margin:4px 0;white-space:pre-line;">${escapeHtml(custom.content)}</p>`;
+      }
+      return '';
+    }).join('');
+
+    const wordHtml = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40" dir="${dir}" lang="${lang}">
       <head>
-        <meta charset='utf-8'>
-        <title>${cv.personal.fullName || 'AYASH CV STUDIO'}</title>
+        <meta charset="utf-8" />
+        <title>${escapeHtml(cv.personal.fullName || 'AYASH CV STUDIO')}</title>
         <style>
-          body { font-family: ${design.fontFamily}, Arial, sans-serif; direction: ${dir}; color: #0B1020; padding: 20px; }
-          h1 { color: ${design.accentColor}; margin-bottom: 4px; }
-          h2 { color: ${design.accentColor}; border-bottom: 2px solid ${design.accentColor}; padding-bottom: 4px; margin-top: 16px; }
-          p, li { font-size: 11pt; line-height: 1.5; }
+          @page { size: A4; margin: 1.5cm; }
+          body { font-family: '${design.fontFamily}', 'Arial', sans-serif; direction: ${dir}; text-align: ${align}; color: #0B1020; font-size: 11pt; }
         </style>
       </head>
-      <body>${el.innerHTML}</body>
+      <body>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-bottom:3px solid ${accent};padding-bottom:10px;margin-bottom:12px;">
+          <tr>
+            ${showImg ? `<td width="${imgSizePx + 16}" valign="middle"><img src="${cv.personal.photo}" width="${imgSizePx}" height="${imgSizePx}" style="object-fit:cover;" /></td>` : ''}
+            <td valign="middle" style="text-align:${align};">
+              <h1 style="margin:0;font-size:20pt;color:#0B1020;">${escapeHtml(cv.personal.fullName || (isAr ? 'الاسم الكامل' : 'Full Name'))}</h1>
+              <p style="margin:4px 0;font-size:12pt;font-weight:bold;color:${accent};">${escapeHtml(cv.personal.jobTitle || '')}</p>
+              ${contacts ? `<p style="margin:4px 0;font-size:9.5pt;color:#475569;">${contacts}</p>` : ''}
+            </td>
+          </tr>
+        </table>
+        ${blocks}
+      </body>
       </html>
     `;
-    const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword' });
+
+    const blob = new Blob(['\ufeff', wordHtml], { type: 'application/msword' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -290,53 +422,96 @@ export default function App() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    notify(isAr ? 'تم تنزيل ملف Word المنسّق بنجاح' : 'Formatted Word file downloaded');
   };
 
+  // Navigate to previous / next section in editor
+  const activeIdx = sections.findIndex(s => s.id === activeSection);
+  const goPrevSection = () => { if (activeIdx > 0) setActiveSection(sections[activeIdx - 1].id); };
+  const goNextSection = () => { if (activeIdx < sections.length - 1) setActiveSection(sections[activeIdx + 1].id); };
+
   const renderCVDocument = (data = cv, tplId = selectedTemplate, mini = false) => {
-    const accent = design.accentColor;
+    const accent = tplId === 'ats' ? '#0B1020' : tplId === 'medical' ? '#0F766E' : design.accentColor;
     const fontClass = design.fontFamily === 'IBM Plex Sans Arabic' ? 'font-ibm' : design.fontFamily === 'Inter' ? 'font-inter' : 'font-cairo';
     const padClass = design.margins === 'compact' ? 'p-5' : design.margins === 'wide' ? 'p-10' : 'p-7';
     const gapClass = design.spacing === 'compact' ? 'space-y-3' : design.spacing === 'relaxed' ? 'space-y-6' : 'space-y-4';
     const textSize = design.fontSize === 'sm' ? 'text-xs' : design.fontSize === 'lg' ? 'text-base' : 'text-sm';
 
     const visibleMap = Object.fromEntries(sections.map(s => [s.id, s.visible]));
-    const isSidebarTemplate = ['executive', 'creative', 'technical', 'medical'].includes(tplId);
+
+    const photoShapeCls =
+      design.photoShape === 'rounded' ? 'rounded-2xl'
+      : design.photoShape === 'square' ? 'rounded-none'
+      : 'rounded-full';
+    const photoSizeCls =
+      design.photoSize === 'sm' ? 'w-16 h-16'
+      : design.photoSize === 'lg' ? 'w-28 h-28'
+      : 'w-22 h-22 w-[88px] h-[88px]';
 
     const headingCls =
-      design.headingStyle === 'pill'
+      design.headingStyle === 'pill' && tplId !== 'ats'
         ? 'inline-block px-3 py-0.5 rounded-full text-white font-bold text-xs uppercase tracking-wider mb-2'
-        : design.headingStyle === 'left-bar'
+        : design.headingStyle === 'left-bar' && tplId !== 'ats'
         ? `font-bold text-sm uppercase tracking-wide mb-2 ${isAr ? 'border-r-4 pr-2' : 'border-l-4 pl-2'}`
         : 'font-bold text-sm uppercase tracking-wide pb-1 mb-2 border-b-2';
 
     const headingStyleObj =
-      design.headingStyle === 'pill'
+      design.headingStyle === 'pill' && tplId !== 'ats'
         ? { backgroundColor: accent }
         : { color: accent, borderColor: accent };
 
-    const renderSectionBlock = (secId) => {
+    // Template-specific section priority ordering (while respecting user visibility)
+    const getOrderedSectionIds = () => {
+      const base = sections.filter(s => s.id !== 'personal').map(s => s.id);
+      if (tplId === 'academic') {
+        const prio = ['summary', 'education', 'certifications', 'projects', 'experience'];
+        return [...prio.filter(id => base.includes(id)), ...base.filter(id => !prio.includes(id))];
+      }
+      if (tplId === 'graduate') {
+        const prio = ['summary', 'education', 'projects', 'skills', 'volunteering', 'experience'];
+        return [...prio.filter(id => base.includes(id)), ...base.filter(id => !prio.includes(id))];
+      }
+      if (tplId === 'technical') {
+        const prio = ['summary', 'skills', 'projects', 'experience', 'education'];
+        return [...prio.filter(id => base.includes(id)), ...base.filter(id => !prio.includes(id))];
+      }
+      return base;
+    };
+
+    const renderSectionBlock = (secId, darkSide = false) => {
       if (!visibleMap[secId]) return null;
+      const hCls = darkSide ? 'font-bold text-xs uppercase tracking-wider pb-1 mb-2 border-b border-white/30 text-white' : headingCls;
+      const hSty = darkSide ? {} : headingStyleObj;
+      const txtMain = darkSide ? 'text-white' : 'text-[#0B1020]';
+      const txtSub = darkSide ? 'text-white/80' : 'text-slate-600';
+
       if (secId === 'summary' && (data.summary.bio || data.summary.objective)) {
         return (
           <div key="summary">
-            <h3 className={headingCls} style={headingStyleObj}>{isAr ? 'النبذة المهنية' : 'Professional Summary'}</h3>
-            {data.summary.bio && <p className="text-slate-700 leading-relaxed">{data.summary.bio}</p>}
-            {data.summary.objective && <p className="text-slate-600 mt-1 text-xs">{data.summary.objective}</p>}
+            <h3 className={hCls} style={hSty}>{isAr ? 'النبذة المهنية' : 'Professional Summary'}</h3>
+            {data.summary.bio && <p className={`${darkSide ? 'text-white/90' : 'text-slate-700'} leading-relaxed`}>{data.summary.bio}</p>}
+            {data.summary.objective && <p className={`${txtSub} mt-1 text-xs`}>{data.summary.objective}</p>}
+            {(data.summary.specialty || data.summary.yearsExp) && (
+              <div className={`flex flex-wrap gap-3 mt-1.5 text-xs ${txtSub}`}>
+                {data.summary.specialty && <span><strong>{isAr ? 'التخصص:' : 'Specialty:'}</strong> {data.summary.specialty}</span>}
+                {data.summary.yearsExp && <span><strong>{isAr ? 'سنوات الخبرة:' : 'Experience:'}</strong> {data.summary.yearsExp}</span>}
+              </div>
+            )}
           </div>
         );
       }
       if (secId === 'experience' && data.experience.length > 0) {
         return (
           <div key="experience">
-            <h3 className={headingCls} style={headingStyleObj}>{isAr ? 'الخبرات المهنية' : 'Work Experience'}</h3>
+            <h3 className={hCls} style={hSty}>{isAr ? 'الخبرات المهنية' : 'Work Experience'}</h3>
             <div className="space-y-3">
               {data.experience.map(exp => (
                 <div key={exp.id}>
                   <div className="flex justify-between items-baseline flex-wrap gap-1">
-                    <span className="font-bold text-[#0B1020]">{exp.role || (isAr ? 'المسمى الوظيفي' : 'Job Title')}</span>
+                    <span className={`font-bold ${txtMain}`}>{exp.role || (isAr ? 'المسمى الوظيفي' : 'Job Title')}</span>
                     <span className="text-xs text-slate-500">{exp.start} {exp.end ? `- ${exp.end}` : ''}</span>
                   </div>
-                  <div className="text-xs font-semibold" style={{ color: accent }}>{exp.company} {exp.location ? `• ${exp.location}` : ''}</div>
+                  <div className="text-xs font-semibold" style={{ color: darkSide ? '#E2E8F0' : accent }}>{exp.company} {exp.location ? `• ${exp.location}` : ''}</div>
                   {exp.description && <p className="text-slate-700 mt-1 leading-relaxed">{exp.description}</p>}
                   {exp.achievements && <p className="text-slate-600 text-xs mt-1">★ {exp.achievements}</p>}
                 </div>
@@ -348,15 +523,15 @@ export default function App() {
       if (secId === 'education' && data.education.length > 0) {
         return (
           <div key="education">
-            <h3 className={headingCls} style={headingStyleObj}>{isAr ? 'التعليم' : 'Education'}</h3>
+            <h3 className={hCls} style={hSty}>{isAr ? 'التعليم' : 'Education'}</h3>
             <div className="space-y-2">
               {data.education.map(edu => (
                 <div key={edu.id}>
                   <div className="flex justify-between items-baseline flex-wrap">
-                    <span className="font-bold text-[#0B1020]">{edu.degree} {edu.major ? `- ${edu.major}` : ''}</span>
-                    <span className="text-xs text-slate-500">{edu.start} {edu.end ? `- ${edu.end}` : ''}</span>
+                    <span className={`font-bold ${txtMain}`}>{edu.degree} {edu.major ? `- ${edu.major}` : ''}</span>
+                    <span className={`text-xs ${txtSub}`}>{edu.start} {edu.end ? `- ${edu.end}` : ''}</span>
                   </div>
-                  <div className="text-xs text-slate-600">{edu.institution} {edu.gpa ? `• ${edu.gpa}` : ''}</div>
+                  <div className={`text-xs ${txtSub}`}>{edu.institution} {edu.gpa ? `• ${edu.gpa}` : ''}</div>
                 </div>
               ))}
             </div>
@@ -364,14 +539,32 @@ export default function App() {
         );
       }
       if (secId === 'skills' && data.skills.length > 0) {
+        // Group skills by category if categories exist
+        const grouped = data.skills.reduce((acc, sk) => {
+          const cat = sk.category || (isAr ? 'عامة' : 'General');
+          if (!acc[cat]) acc[cat] = [];
+          acc[cat].push(sk);
+          return acc;
+        }, {});
+        const cats = Object.keys(grouped);
         return (
           <div key="skills">
-            <h3 className={headingCls} style={headingStyleObj}>{isAr ? 'المهارات' : 'Skills'}</h3>
-            <div className="flex flex-wrap gap-1.5">
-              {data.skills.map(sk => (
-                <span key={sk.id} className="px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200">
-                  {sk.name} {sk.level ? `(${sk.level})` : ''}
-                </span>
+            <h3 className={hCls} style={hSty}>{isAr ? 'المهارات' : 'Skills'}</h3>
+            <div className="space-y-2">
+              {cats.map(cat => (
+                <div key={cat}>
+                  {cats.length > 1 && <div className={`text-[11px] font-bold mb-1 ${txtSub}`}>{cat}</div>}
+                  <div className="flex flex-wrap gap-1.5">
+                    {grouped[cat].map(sk => (
+                      <span
+                        key={sk.id}
+                        className={`px-2.5 py-0.5 rounded-md text-xs font-medium ${darkSide ? 'bg-white/15 text-white border border-white/20' : 'bg-slate-100 text-slate-800 border border-slate-200'}`}
+                      >
+                        {sk.name} {sk.level ? `(${sk.level})` : ''}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
@@ -380,11 +573,14 @@ export default function App() {
       if (secId === 'projects' && data.projects.length > 0) {
         return (
           <div key="projects">
-            <h3 className={headingCls} style={headingStyleObj}>{isAr ? 'المشاريع' : 'Projects'}</h3>
+            <h3 className={hCls} style={hSty}>{isAr ? 'المشاريع' : 'Projects'}</h3>
             <div className="space-y-2">
               {data.projects.map(pr => (
                 <div key={pr.id}>
-                  <div className="font-bold text-[#0B1020]">{pr.name}</div>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className={`font-bold ${txtMain}`}>{pr.name}</span>
+                    {pr.link && <span className="text-[11px] text-blue-600 font-mono">{pr.link}</span>}
+                  </div>
                   {pr.tech && <div className="text-xs font-mono" style={{ color: accent }}>{pr.tech}</div>}
                   {pr.description && <p className="text-slate-700 text-xs mt-0.5">{pr.description}</p>}
                 </div>
@@ -396,11 +592,12 @@ export default function App() {
       if (secId === 'certifications' && data.certifications.length > 0) {
         return (
           <div key="certifications">
-            <h3 className={headingCls} style={headingStyleObj}>{isAr ? 'الدورات والشهادات' : 'Certifications'}</h3>
+            <h3 className={hCls} style={hSty}>{isAr ? 'الدورات والشهادات' : 'Certifications'}</h3>
             <ul className="space-y-1">
               {data.certifications.map(c => (
-                <li key={c.id} className="text-xs text-slate-700">
-                  <span className="font-bold text-[#0B1020]">{c.title}</span> — {c.issuer} {c.date ? `(${c.date})` : ''}
+                <li key={c.id} className={`text-xs ${darkSide ? 'text-white/90' : 'text-slate-700'}`}>
+                  <span className={`font-bold ${txtMain}`}>{c.title}</span> — {c.issuer} {c.date ? `(${c.date})` : ''}
+                  {c.link && <span className="text-blue-500 ms-1 font-mono text-[10px]">[{c.link}]</span>}
                 </li>
               ))}
             </ul>
@@ -410,10 +607,10 @@ export default function App() {
       if (secId === 'languages' && data.languages.length > 0) {
         return (
           <div key="languages">
-            <h3 className={headingCls} style={headingStyleObj}>{isAr ? 'اللغات' : 'Languages'}</h3>
+            <h3 className={hCls} style={hSty}>{isAr ? 'اللغات' : 'Languages'}</h3>
             <div className="flex flex-wrap gap-3">
               {data.languages.map(l => (
-                <div key={l.id} className="text-xs"><span className="font-bold">{l.name}:</span> <span className="text-slate-600">{l.level}</span></div>
+                <div key={l.id} className={`text-xs ${txtMain}`}><span className="font-bold">{l.name}:</span> <span className={txtSub}>{l.level}</span></div>
               ))}
             </div>
           </div>
@@ -422,12 +619,12 @@ export default function App() {
       if (secId === 'volunteering' && data.volunteering.length > 0) {
         return (
           <div key="volunteering">
-            <h3 className={headingCls} style={headingStyleObj}>{isAr ? 'الأعمال التطوعية' : 'Volunteering'}</h3>
+            <h3 className={hCls} style={hSty}>{isAr ? 'الأعمال التطوعية' : 'Volunteering'}</h3>
             <div className="space-y-1.5">
               {data.volunteering.map(v => (
                 <div key={v.id} className="text-xs">
-                  <span className="font-bold">{v.title}</span> — {v.org} {v.period ? `(${v.period})` : ''}
-                  {v.details && <p className="text-slate-600">{v.details}</p>}
+                  <span className={`font-bold ${txtMain}`}>{v.title}</span> — {v.org} {v.period ? `(${v.period})` : ''}
+                  {v.details && <p className={txtSub}>{v.details}</p>}
                 </div>
               ))}
             </div>
@@ -437,10 +634,10 @@ export default function App() {
       if (secId === 'references' && data.references.length > 0) {
         return (
           <div key="references">
-            <h3 className={headingCls} style={headingStyleObj}>{isAr ? 'المراجع' : 'References'}</h3>
+            <h3 className={hCls} style={hSty}>{isAr ? 'المراجع' : 'References'}</h3>
             <div className="space-y-1">
               {data.references.map(r => (
-                <div key={r.id} className="text-xs"><span className="font-bold">{r.name}</span> {r.role ? `• ${r.role}` : ''} {r.contact ? `• ${r.contact}` : ''}</div>
+                <div key={r.id} className={`text-xs ${txtMain}`}><span className="font-bold">{r.name}</span> {r.role ? `• ${r.role}` : ''} {r.contact ? `• ${r.contact}` : ''}</div>
               ))}
             </div>
           </div>
@@ -450,7 +647,7 @@ export default function App() {
       if (custom && (custom.title || custom.content)) {
         return (
           <div key={custom.id}>
-            <h3 className={headingCls} style={headingStyleObj}>{custom.title}</h3>
+            <h3 className={hCls} style={hSty}>{custom.title}</h3>
             <p className="text-slate-700 whitespace-pre-line">{custom.content}</p>
           </div>
         );
@@ -459,22 +656,128 @@ export default function App() {
     };
 
     const contactItems = [
-      data.personal.email,
-      data.personal.phone,
-      data.personal.location,
-      data.personal.linkedin,
-      data.personal.github,
-      data.personal.website
+      data.personal.email, data.personal.phone, data.personal.location,
+      data.personal.address, data.personal.linkedin, data.personal.github, data.personal.website
     ].filter(Boolean);
 
+    const orderedIds = getOrderedSectionIds();
+    const showPhotoHere = design.showPhoto && data.personal.photo && tplId !== 'ats';
+
+    // SPECIAL LAYOUT 1: CREATIVE (Full-height colored sidebar)
+    if (tplId === 'creative') {
+      const sideIds = ['skills', 'languages', 'certifications', 'references'];
+      return (
+        <div id={mini ? undefined : 'cv-a4-preview'} dir={dir} className={`bg-white text-[#0B1020] ${fontClass} ${textSize} w-full min-h-[297mm] shadow-xl border border-slate-200 overflow-hidden print-container grid grid-cols-12`}>
+          <div className={`col-span-4 text-white ${padClass} ${gapClass}`} style={{ backgroundColor: accent }}>
+            <div className="text-center space-y-2 pb-4 border-b border-white/25">
+              {showPhotoHere && (
+                <img src={data.personal.photo} alt="Profile" className={`${photoSizeCls} ${photoShapeCls} object-cover border-4 border-white/80 shadow-lg mx-auto`} />
+              )}
+              <h1 className="text-xl font-extrabold">{data.personal.fullName || (isAr ? 'الاسم الكامل' : 'Full Name')}</h1>
+              <p className="text-xs text-white/85 font-semibold">{data.personal.jobTitle || (isAr ? 'المسمى الوظيفي' : 'Job Title')}</p>
+            </div>
+            {contactItems.length > 0 && (
+              <div className="space-y-1 text-[11px] text-white/90">
+                {contactItems.map((item, idx) => <div key={idx} className="truncate">• {item}</div>)}
+              </div>
+            )}
+            {sideIds.map(id => renderSectionBlock(id, true))}
+          </div>
+          <div className={`col-span-8 ${padClass} ${gapClass}`}>
+            {orderedIds.filter(id => !sideIds.includes(id)).map(id => renderSectionBlock(id, false))}
+          </div>
+        </div>
+      );
+    }
+
+    // SPECIAL LAYOUT 2: CLASSIC & ACADEMIC (Centered formal header)
+    if (tplId === 'classic' || tplId === 'academic') {
+      return (
+        <div id={mini ? undefined : 'cv-a4-preview'} dir={dir} className={`bg-white text-[#0B1020] ${fontClass} ${textSize} w-full min-h-[297mm] shadow-xl border border-slate-200 overflow-hidden print-container`}>
+          <div className={`${padClass} text-center border-b-4 border-double`} style={{ borderColor: accent }}>
+            {showPhotoHere && (
+              <img src={data.personal.photo} alt="Profile" className={`${photoSizeCls} ${photoShapeCls} object-cover border-2 border-slate-200 shadow mx-auto mb-3`} />
+            )}
+            <h1 className="text-2xl font-extrabold text-[#0B1020]">{data.personal.fullName || (isAr ? 'الاسم الكامل' : 'Your Full Name')}</h1>
+            <p className="text-sm font-semibold mt-1" style={{ color: accent }}>{data.personal.jobTitle || (isAr ? 'المسمى الوظيفي' : 'Job Title')}</p>
+            {contactItems.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-2 text-xs text-slate-600">
+                {contactItems.map((item, idx) => <span key={idx}>{idx > 0 ? ' | ' : ''}{item}</span>)}
+              </div>
+            )}
+          </div>
+          <div className={`${padClass} ${gapClass}`}>
+            {orderedIds.map(id => renderSectionBlock(id))}
+          </div>
+        </div>
+      );
+    }
+
+    // SPECIAL LAYOUT 3: MINIMAL (Asymmetric split header)
+    if (tplId === 'minimal') {
+      return (
+        <div id={mini ? undefined : 'cv-a4-preview'} dir={dir} className={`bg-white text-[#0B1020] ${fontClass} ${textSize} w-full min-h-[297mm] shadow-xl border border-slate-200 overflow-hidden print-container`}>
+          <div className={`${padClass} flex items-center justify-between gap-4 border-b border-slate-200`}>
+            <div className="flex items-center gap-4">
+              {showPhotoHere && (
+                <img src={data.personal.photo} alt="Profile" className={`${photoSizeCls} ${photoShapeCls} object-cover border border-slate-200 shrink-0`} />
+              )}
+              <div>
+                <h1 className="text-2xl font-extrabold tracking-tight">{data.personal.fullName || (isAr ? 'الاسم الكامل' : 'Your Full Name')}</h1>
+                <p className="text-sm text-slate-500 font-medium mt-0.5">{data.personal.jobTitle || (isAr ? 'المسمى الوظيفي' : 'Job Title')}</p>
+              </div>
+            </div>
+            <div className="text-[11px] text-slate-500 text-end space-y-0.5">
+              {contactItems.slice(0, 4).map((item, idx) => <div key={idx}>{item}</div>)}
+            </div>
+          </div>
+          <div className={`${padClass} ${gapClass}`}>
+            {orderedIds.map(id => renderSectionBlock(id))}
+          </div>
+        </div>
+      );
+    }
+
+    // SPECIAL LAYOUT 4: INTERNATIONAL (Card Header + Bottom 2-Col Grid)
+    if (tplId === 'international') {
+      const bottomIds = ['skills', 'languages'];
+      return (
+        <div id={mini ? undefined : 'cv-a4-preview'} dir={dir} className={`bg-white text-[#0B1020] ${fontClass} ${textSize} w-full min-h-[297mm] shadow-xl border border-slate-200 overflow-hidden print-container ${padClass} ${gapClass}`}>
+          <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              {showPhotoHere && (
+                <img src={data.personal.photo} alt="Profile" className={`${photoSizeCls} ${photoShapeCls} object-cover border-2 border-white shadow shrink-0`} />
+              )}
+              <div>
+                <h1 className="text-2xl font-extrabold text-[#0B1020]">{data.personal.fullName || (isAr ? 'الاسم الكامل' : 'Your Full Name')}</h1>
+                <p className="text-sm font-bold mt-0.5" style={{ color: accent }}>{data.personal.jobTitle || (isAr ? 'المسمى الوظيفي' : 'Job Title')}</p>
+                {contactItems.length > 0 && (
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs text-slate-600">
+                    {contactItems.map((item, idx) => <span key={idx}>• {item}</span>)}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className={gapClass}>
+            {orderedIds.filter(id => !bottomIds.includes(id)).map(id => renderSectionBlock(id))}
+          </div>
+          <div className="grid grid-cols-2 gap-6 pt-2 border-t border-slate-200">
+            {bottomIds.map(id => <div key={id}>{renderSectionBlock(id)}</div>)}
+          </div>
+        </div>
+      );
+    }
+
+    // STANDARD & SIDEBAR LAYOUTS (executive, technical, medical, graduate, ats)
+    const isSidebarTemplate = ['executive', 'technical', 'medical'].includes(tplId);
     const headerBg =
       tplId === 'executive' ? '#0B1020'
-      : tplId === 'creative' ? accent
       : tplId === 'technical' ? '#0F172A'
       : tplId === 'medical' ? '#F0FDFA'
+      : tplId === 'graduate' ? '#EFF6FF'
       : 'transparent';
-
-    const headerDark = ['executive', 'creative', 'technical'].includes(tplId);
+    const headerDark = ['executive', 'technical'].includes(tplId);
 
     return (
       <div
@@ -482,15 +785,20 @@ export default function App() {
         dir={dir}
         className={`bg-white text-[#0B1020] ${fontClass} ${textSize} w-full min-h-[297mm] shadow-xl border border-slate-200 overflow-hidden print-container`}
       >
-        {/* Header */}
+        {tplId === 'medical' && <div className="h-2.5 w-full bg-[#0F766E]" />}
+        {tplId === 'graduate' && <div className="h-2 w-full" style={{ backgroundColor: accent }} />}
         <div
           className={`${padClass} ${headerDark ? 'text-white' : 'border-b-2'}`}
           style={{ backgroundColor: headerBg, borderColor: headerDark ? 'transparent' : accent }}
         >
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              {design.showPhoto && data.personal.photo && (
-                <img src={data.personal.photo} alt="Profile" className="w-20 h-20 rounded-full object-cover border-2 border-white shadow" />
+              {showPhotoHere && (
+                <img
+                  src={data.personal.photo}
+                  alt="Profile"
+                  className={`${photoSizeCls} ${photoShapeCls} object-cover border-2 ${headerDark ? 'border-white/80' : 'border-slate-200'} shadow-md shrink-0`}
+                />
               )}
               <div>
                 <h1 className={`text-2xl font-extrabold ${headerDark ? 'text-white' : 'text-[#0B1020]'}`}>
@@ -499,10 +807,16 @@ export default function App() {
                 <p className={`text-sm font-semibold mt-0.5 ${headerDark ? 'text-blue-200' : ''}`} style={!headerDark ? { color: accent } : {}}>
                   {data.personal.jobTitle || (isAr ? 'المسمى الوظيفي' : 'Professional Job Title')}
                 </p>
+                {tplId === 'medical' && (data.summary.specialty || data.summary.yearsExp) && (
+                  <div className="flex flex-wrap gap-2 mt-1.5">
+                    {data.summary.specialty && <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-800 text-[11px] font-bold">{data.summary.specialty}</span>}
+                    {data.summary.yearsExp && <span className="px-2 py-0.5 rounded bg-white border border-teal-200 text-teal-800 text-[11px] font-bold">{data.summary.yearsExp}</span>}
+                  </div>
+                )}
               </div>
             </div>
             {tplId === 'technical' && (
-              <div className="text-[11px] font-mono bg-white/10 px-2.5 py-1 rounded text-blue-200">
+              <div className="text-[11px] font-mono bg-white/10 px-2.5 py-1 rounded text-blue-200 shrink-0">
                 {'<DEV_CV />'}
               </div>
             )}
@@ -514,22 +828,20 @@ export default function App() {
           )}
         </div>
 
-        {/* Body */}
         {isSidebarTemplate ? (
           <div className="grid grid-cols-12 min-h-[230mm]">
             <div className={`col-span-4 bg-slate-50 ${padClass} ${gapClass} border-e border-slate-200`}>
-              {['skills', 'languages', 'certifications', 'references'].map(renderSectionBlock)}
+              {['skills', 'languages', 'certifications', 'references'].map(id => renderSectionBlock(id))}
             </div>
             <div className={`col-span-8 ${padClass} ${gapClass}`}>
-              {sections
-                .map(s => s.id)
-                .filter(id => !['personal', 'skills', 'languages', 'certifications', 'references'].includes(id))
-                .map(renderSectionBlock)}
+              {orderedIds
+                .filter(id => !['skills', 'languages', 'certifications', 'references'].includes(id))
+                .map(id => renderSectionBlock(id))}
             </div>
           </div>
         ) : (
           <div className={`${padClass} ${gapClass}`}>
-            {sections.filter(s => s.id !== 'personal').map(s => renderSectionBlock(s.id))}
+            {orderedIds.map(id => renderSectionBlock(id))}
           </div>
         )}
       </div>
@@ -538,6 +850,13 @@ export default function App() {
 
   return (
     <div dir={dir} className="min-h-screen bg-[#F5F7FB] text-[#0B1020] flex flex-col">
+      {toast && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-[#0B1020] text-white px-5 py-2.5 rounded-xl shadow-2xl text-xs font-bold flex items-center gap-2 no-print">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          {toast}
+        </div>
+      )}
+
       {/* Navbar */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-slate-200 no-print">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -598,7 +917,6 @@ export default function App() {
       {/* LANDING VIEW */}
       {view === 'landing' && (
         <main className="flex-1">
-          {/* Hero */}
           <section className="max-w-7xl mx-auto px-4 sm:px-6 py-14 lg:py-20 grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[#2563EB] text-xs font-bold">
@@ -628,14 +946,16 @@ export default function App() {
               </div>
             </div>
 
-            {/* Hero Visual Mockup */}
             <div className="relative">
               <div className="absolute -inset-4 bg-gradient-to-tr from-[#2563EB]/15 to-[#7C3AED]/15 rounded-3xl blur-2xl" />
               <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 space-y-4">
                 <div className="bg-[#0B1020] text-white rounded-xl p-4 flex items-center justify-between">
-                  <div>
-                    <div className="font-extrabold text-lg">AYASH MAHMOUD ALSHAMERI</div>
-                    <div className="text-xs text-blue-300">Software & AI Developer</div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#2563EB] to-[#7C3AED] flex items-center justify-center font-extrabold text-sm border-2 border-white/70">AM</div>
+                    <div>
+                      <div className="font-extrabold text-base sm:text-lg">AYASH MAHMOUD ALSHAMERI</div>
+                      <div className="text-xs text-blue-300">Software & AI Developer</div>
+                    </div>
                   </div>
                   <div className="px-2.5 py-1 rounded-lg bg-[#2563EB] text-[10px] font-bold">A4 READY</div>
                 </div>
@@ -660,7 +980,6 @@ export default function App() {
             </div>
           </section>
 
-          {/* Features */}
           <section id="features" className="bg-white py-16 border-y border-slate-200">
             <div className="max-w-7xl mx-auto px-4 sm:px-6">
               <h2 className="text-2xl sm:text-3xl font-extrabold text-center mb-10">
@@ -668,12 +987,12 @@ export default function App() {
               </h2>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[
-                  { icon: Layout, ar: 'قوالب احترافية متعددة', en: '10 Distinct Templates', dAr: '10 قوالب مختلفة فعلًا في التوزيع والتصميم.', dEn: '10 genuinely unique structural layouts.' },
-                  { icon: Sparkles, ar: 'تصميم سهل وسريع', en: 'Fast & Intuitive', dAr: 'واجهة منظمة تناسب المبتدئين والمحترفين.', dEn: 'Clean workflow for everyone.' },
-                  { icon: Eye, ar: 'معاينة مباشرة', en: 'Live A4 Preview', dAr: 'شاهد كل تعديل فورًا على صفحة A4.', dEn: 'See every edit instantly on A4.' },
+                  { icon: Layout, ar: '10 قوالب مختلفة البنية', en: '10 Distinct Layouts', dAr: 'كل قالب يمتلك توزيعًا وهيكلة مختلفة تناسب تخصصك.', dEn: 'Every template features a unique layout structure.' },
+                  { icon: Camera, ar: 'صورة شخصية اختيارية', en: 'Optional Profile Photo', dAr: 'أضف صورتك الشخصية (دائرية أو مربعة) وتحكم بحجمها أو أخفها بضغطة زر.', dEn: 'Upload an optional photo with shape & size controls.' },
+                  { icon: Eye, ar: 'معاينة مباشرة A4', en: 'Live A4 Preview', dAr: 'شاهد كل تعديل فورًا على صفحة A4 جاهزة للطباعة.', dEn: 'See every edit instantly on print-ready A4.' },
                   { icon: Globe, ar: 'دعم العربية والإنجليزية', en: 'Arabic RTL & English LTR', dAr: 'تبديل فوري للغة واتجاه الكتابة بدون أخطاء.', dEn: 'Seamless bilingual direction switching.' },
-                  { icon: Download, ar: 'تنزيل PDF وWord', en: 'PDF & Word Export', dAr: 'ملفات نصية قابلة للطباعة والتحرير والبحث.', dEn: 'Selectable PDF and editable Word files.' },
-                  { icon: Shield, ar: 'خصوصية تامة للبيانات', en: '100% Privacy First', dAr: 'لا حسابات ولا خوادم؛ كل شيء داخل متصفحك.', dEn: 'Zero servers, zero tracking, in-memory only.' },
+                  { icon: Download, ar: 'تصدير PDF وWord منسّق', en: 'Polished PDF & Word', dAr: 'ملفات PDF نصية وملفات Word متوافقة مع MS Word وWPS.', dEn: 'Selectable PDF and cleanly formatted Word files.' },
+                  { icon: Shield, ar: 'خصوصية تامة للبيانات', en: '100% Privacy First', dAr: 'لا حسابات ولا خوادم؛ كل شيء داخل متصفحك فقط.', dEn: 'Zero servers, zero tracking, in-memory only.' },
                 ].map((f, idx) => (
                   <div key={idx} className="p-6 rounded-2xl bg-[#F5F7FB] border border-slate-200 hover:border-[#2563EB] transition">
                     <div className="w-11 h-11 rounded-xl bg-white shadow-sm flex items-center justify-center text-[#2563EB] mb-4">
@@ -687,7 +1006,6 @@ export default function App() {
             </div>
           </section>
 
-          {/* Steps */}
           <section id="how" className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-center mb-10">
               {isAr ? '5 خطوات بسيطة لسيرة ذاتية احترافية' : '5 Simple Steps to Your New CV'}
@@ -708,7 +1026,6 @@ export default function App() {
             </div>
           </section>
 
-          {/* Featured Templates */}
           <section className="bg-white py-16 border-y border-slate-200">
             <div className="max-w-7xl mx-auto px-4 sm:px-6">
               <div className="flex items-center justify-between mb-8">
@@ -722,7 +1039,7 @@ export default function App() {
                   <div key={tpl.id} className="rounded-2xl border border-slate-200 bg-[#F5F7FB] p-4 flex flex-col justify-between">
                     <div>
                       <div className="h-36 rounded-xl bg-white border border-slate-200 p-3 mb-3 overflow-hidden">
-                        <div className="h-5 rounded bg-[#0B1020] mb-2 w-3/4" />
+                        <div className={`h-5 rounded mb-2 ${tpl.id === 'classic' ? 'mx-auto w-2/3 bg-[#0B1020]' : tpl.id === 'creative' ? 'w-full bg-[#2563EB]' : 'w-3/4 bg-[#0B1020]'}`} />
                         <div className="h-2 rounded bg-[#2563EB]/40 mb-2 w-1/2" />
                         <div className="space-y-1.5 mt-3">
                           <div className="h-1.5 rounded bg-slate-200 w-full" />
@@ -746,16 +1063,15 @@ export default function App() {
             </div>
           </section>
 
-          {/* FAQ */}
           <section id="faq" className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-center mb-8">
               {isAr ? 'الأسئلة الشائعة' : 'Frequently Asked Questions'}
             </h2>
             <div className="space-y-3">
               {[
-                { qAr: 'هل يتم حفظ بياناتي على الإنترنت؟', aAr: 'لا إطلاقًا. تعمل المنصة بالكامل داخل ذاكرة متصفحك المؤقتة دون خوادم أو قواعد بيانات أو LocalStorage.', qEn: 'Is my data saved online?', aEn: 'Never. Everything runs strictly in your browser memory with zero servers or storage.' },
-                { qAr: 'هل المنصة مجانية وتدعم اللغة العربية؟', aAr: 'نعم، مجانية بالكامل وتدعم العربية (RTL) والإنجليزية (LTR) مع تصدير PDF وWord.', qEn: 'Is it free and bilingual?', aEn: 'Yes, completely free with full Arabic RTL and English LTR support plus PDF & Word export.' },
-                { qAr: 'هل ملفات PDF قابلة للبحث وقراءة أنظمة ATS؟', aAr: 'نعم، يتم التصدير كنص حقيقي قابل للتحديد والبحث وليس مجرد صورة.', qEn: 'Are exported PDFs ATS-friendly?', aEn: 'Yes, PDFs are exported as selectable vector text, not flattened images.' },
+                { qAr: 'هل يتم حفظ بياناتي أو صورتي على الإنترنت؟', aAr: 'لا إطلاقًا. تعمل المنصة بالكامل داخل ذاكرة متصفحك المؤقتة دون خوادم أو قواعد بيانات أو LocalStorage.', qEn: 'Is my data or photo saved online?', aEn: 'Never. Everything runs strictly in your browser memory with zero servers or storage.' },
+                { qAr: 'هل يمكنني إضافة صورة شخصية للسيرة الذاتية؟', aAr: 'نعم، الصورة الشخصية اختيارية بالكامل؛ يمكنك تفعيلها أو إخفاؤها وتحديد شكلها وحجمها بسهولة.', qEn: 'Can I add a profile photo?', aEn: 'Yes, the profile photo is completely optional with shape, size, and visibility controls.' },
+                { qAr: 'هل ملفات PDF وWord قابلة للتعديل والبحث؟', aAr: 'نعم، ملفات PDF نصية قابلة للبحث والنسخ، وملفات Word منسقة وقابلة للتعديل في MS Word وWPS Office.', qEn: 'Are exported PDF & Word files editable?', aEn: 'Yes, PDFs are selectable vector text and Word files are formatted for MS Word & WPS.' },
               ].map((item, idx) => (
                 <div key={idx} className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
                   <button
@@ -797,19 +1113,27 @@ export default function App() {
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#0B1020] text-white">{tpl.tag}</span>
                       <span className="text-[10px] text-slate-400 font-mono">{tpl.layout}</span>
                     </div>
-                    <div className="bg-white h-28 rounded-lg border border-slate-200 p-2.5 flex gap-2">
-                      {['executive', 'creative', 'technical', 'medical'].includes(tpl.id) && (
-                        <div className="w-1/3 bg-slate-100 rounded p-1.5 space-y-1">
-                          <div className="h-2 bg-[#2563EB] rounded w-3/4" />
+                    <div className="bg-white h-28 rounded-lg border border-slate-200 overflow-hidden flex">
+                      {tpl.id === 'creative' && (
+                        <div className="w-1/3 bg-[#2563EB] p-2 space-y-1.5">
+                          <div className="w-5 h-5 rounded-full bg-white/80 mx-auto" />
+                          <div className="h-1.5 bg-white/70 rounded w-full" />
+                          <div className="h-1 bg-white/50 rounded w-2/3 mx-auto" />
+                        </div>
+                      )}
+                      {['executive', 'technical', 'medical'].includes(tpl.id) && (
+                        <div className="w-1/3 bg-slate-100 p-2 space-y-1.5 border-e">
+                          <div className={`h-2 rounded w-3/4 ${tpl.id === 'medical' ? 'bg-teal-600' : 'bg-[#2563EB]'}`} />
                           <div className="h-1.5 bg-slate-300 rounded w-full" />
                           <div className="h-1.5 bg-slate-300 rounded w-2/3" />
                         </div>
                       )}
-                      <div className="flex-1 space-y-1.5">
-                        <div className="h-3 bg-[#0B1020] rounded w-2/3" />
-                        <div className="h-1.5 bg-[#7C3AED]/50 rounded w-1/2" />
+                      <div className="flex-1 p-2.5 space-y-1.5">
+                        <div className={`h-3 rounded ${tpl.id === 'classic' || tpl.id === 'academic' ? 'mx-auto w-1/2 bg-[#0B1020]' : tpl.id === 'ats' ? 'w-2/3 bg-black' : 'w-2/3 bg-[#0B1020]'}`} />
+                        <div className={`h-1.5 rounded ${tpl.id === 'classic' || tpl.id === 'academic' ? 'mx-auto w-1/3 bg-blue-400' : 'w-1/2 bg-[#7C3AED]/50'}`} />
                         <div className="h-1.5 bg-slate-200 rounded w-full mt-2" />
                         <div className="h-1.5 bg-slate-200 rounded w-5/6" />
+                        <div className="h-1.5 bg-slate-200 rounded w-3/4" />
                       </div>
                     </div>
                   </div>
@@ -838,12 +1162,12 @@ export default function App() {
 
       {/* BUILDER VIEW */}
       {view === 'builder' && (
-        <main className="flex-1 max-w-[1600px] mx-auto w-full px-3 sm:px-5 py-5 flex flex-col gap-4">
+        <main className="flex-1 max-w-[1600px] mx-auto w-full px-3 sm:px-5 py-5 flex flex-col gap-4 print-main">
           {/* Top Action Bar */}
           <div className="bg-white rounded-2xl border border-slate-200 p-3 flex flex-wrap items-center justify-between gap-2 no-print">
             <div className="flex flex-wrap items-center gap-2">
               <button
-                onClick={() => setCv(isAr ? SAMPLE_CV_AR : SAMPLE_CV_EN)}
+                onClick={() => { setCv(isAr ? SAMPLE_CV_AR : SAMPLE_CV_EN); notify(isAr ? 'تمت تعبئة بيانات تجريبية' : 'Sample data loaded'); }}
                 className="px-3 py-1.5 rounded-lg bg-blue-50 text-[#2563EB] text-xs font-bold hover:bg-blue-100"
               >
                 {t.loadSample}
@@ -902,35 +1226,56 @@ export default function App() {
                 </select>
               </div>
               <div>
-                <label className="font-bold block mb-1.5">{isAr ? 'حجم الخط' : 'Font Size'}</label>
-                <select value={design.fontSize} onChange={e => setDesign(d => ({ ...d, fontSize: e.target.value }))} className="w-full border rounded-lg p-1.5">
-                  <option value="sm">{isAr ? 'صغير' : 'Small'}</option>
-                  <option value="base">{isAr ? 'متوسط' : 'Medium'}</option>
-                  <option value="lg">{isAr ? 'كبير' : 'Large'}</option>
-                </select>
-              </div>
-              <div>
-                <label className="font-bold block mb-1.5">{isAr ? 'شكل العناوين' : 'Heading Style'}</label>
-                <select value={design.headingStyle} onChange={e => setDesign(d => ({ ...d, headingStyle: e.target.value }))} className="w-full border rounded-lg p-1.5">
-                  <option value="underline">{isAr ? 'خط سفلي' : 'Underline'}</option>
-                  <option value="left-bar">{isAr ? 'شريط جانبي' : 'Side Bar'}</option>
-                  <option value="pill">{isAr ? 'بطاقة ملونة' : 'Colored Pill'}</option>
-                </select>
+                <label className="font-bold block mb-1.5">{isAr ? 'حجم الخط والعناوين' : 'Font & Headings'}</label>
+                <div className="space-y-1.5">
+                  <select value={design.fontSize} onChange={e => setDesign(d => ({ ...d, fontSize: e.target.value }))} className="w-full border rounded-lg p-1.5">
+                    <option value="sm">{isAr ? 'خط صغير' : 'Small Font'}</option>
+                    <option value="base">{isAr ? 'خط متوسط' : 'Medium Font'}</option>
+                    <option value="lg">{isAr ? 'خط كبير' : 'Large Font'}</option>
+                  </select>
+                  <select value={design.headingStyle} onChange={e => setDesign(d => ({ ...d, headingStyle: e.target.value }))} className="w-full border rounded-lg p-1.5">
+                    <option value="underline">{isAr ? 'عناوين بخط سفلي' : 'Underline'}</option>
+                    <option value="left-bar">{isAr ? 'شريط جانبي' : 'Side Bar'}</option>
+                    <option value="pill">{isAr ? 'بطاقة ملونة' : 'Colored Pill'}</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="font-bold block mb-1.5">{isAr ? 'الهوامش والمسافات' : 'Margins & Spacing'}</label>
-                <select value={design.margins} onChange={e => setDesign(d => ({ ...d, margins: e.target.value }))} className="w-full border rounded-lg p-1.5">
-                  <option value="compact">{isAr ? 'مضغوط' : 'Compact'}</option>
-                  <option value="normal">{isAr ? 'متوازن' : 'Normal'}</option>
-                  <option value="wide">{isAr ? 'واسع' : 'Wide'}</option>
-                </select>
+                <div className="space-y-1.5">
+                  <select value={design.margins} onChange={e => setDesign(d => ({ ...d, margins: e.target.value }))} className="w-full border rounded-lg p-1.5">
+                    <option value="compact">{isAr ? 'هوامش مضغوطة' : 'Compact Margins'}</option>
+                    <option value="normal">{isAr ? 'هوامش متوازنة' : 'Normal Margins'}</option>
+                    <option value="wide">{isAr ? 'هوامش واسعة' : 'Wide Margins'}</option>
+                  </select>
+                  <select value={design.spacing} onChange={e => setDesign(d => ({ ...d, spacing: e.target.value }))} className="w-full border rounded-lg p-1.5">
+                    <option value="compact">{isAr ? 'مسافات مضغوطة' : 'Compact Spacing'}</option>
+                    <option value="normal">{isAr ? 'مسافات متوازنة' : 'Normal Spacing'}</option>
+                    <option value="relaxed">{isAr ? 'مسافات واسعة' : 'Relaxed Spacing'}</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="font-bold block mb-1.5">{isAr ? 'إعدادات الصورة' : 'Photo Style'}</label>
+                <div className="space-y-1.5">
+                  <select value={design.photoShape} onChange={e => setDesign(d => ({ ...d, photoShape: e.target.value }))} className="w-full border rounded-lg p-1.5">
+                    <option value="circle">{isAr ? 'صورة دائرية' : 'Circle Photo'}</option>
+                    <option value="rounded">{isAr ? 'مربعة ناعمة' : 'Rounded Square'}</option>
+                    <option value="square">{isAr ? 'مربعة رسمية' : 'Sharp Square'}</option>
+                  </select>
+                  <select value={design.photoSize} onChange={e => setDesign(d => ({ ...d, photoSize: e.target.value }))} className="w-full border rounded-lg p-1.5">
+                    <option value="sm">{isAr ? 'حجم صغير' : 'Small Size'}</option>
+                    <option value="md">{isAr ? 'حجم متوسط' : 'Medium Size'}</option>
+                    <option value="lg">{isAr ? 'حجم كبير' : 'Large Size'}</option>
+                  </select>
+                </div>
               </div>
               <div className="flex flex-col justify-between">
                 <label className="flex items-center gap-2 font-bold cursor-pointer">
                   <input type="checkbox" checked={design.showPhoto} onChange={e => setDesign(d => ({ ...d, showPhoto: e.target.checked }))} />
                   {isAr ? 'إظهار الصورة الشخصية' : 'Show Photo'}
                 </label>
-                <button onClick={() => setDesign(DEFAULT_DESIGN)} className="mt-2 py-1.5 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold flex items-center justify-center gap-1">
+                <button onClick={() => { setDesign(DEFAULT_DESIGN); notify(isAr ? 'تمت إعادة ضبط التصميم' : 'Design reset'); }} className="mt-2 py-1.5 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold flex items-center justify-center gap-1">
                   <RotateCcw className="w-3.5 h-3.5" /> {isAr ? 'إعادة ضبط' : 'Reset'}
                 </button>
               </div>
@@ -938,44 +1283,123 @@ export default function App() {
           )}
 
           {/* 3-Pane Studio */}
-          <div className="grid lg:grid-cols-12 gap-4 flex-1">
+          <div className="grid lg:grid-cols-12 gap-4 flex-1 print-main">
             {/* Pane 1: Sections Sidebar */}
-            <aside className={`lg:col-span-3 bg-white rounded-2xl border border-slate-200 p-3 space-y-1.5 h-fit no-print ${mobileTab === 'preview' ? 'hidden lg:block' : ''}`}>
-              <div className="flex items-center justify-between px-2 py-1 mb-1">
+            <aside className={`lg:col-span-3 bg-white rounded-2xl border border-slate-200 p-3 space-y-2 h-fit no-print ${mobileTab === 'preview' ? 'hidden lg:block' : ''}`}>
+              <div className="p-2.5 rounded-xl bg-[#F5F7FB] border border-slate-200">
+                <div className="flex justify-between text-[11px] font-bold mb-1">
+                  <span>{isAr ? 'اكتمال السيرة الذاتية' : 'CV Completeness'}</span>
+                  <span className="text-[#2563EB]">{completeness}%</span>
+                </div>
+                <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-[#2563EB] to-[#7C3AED] transition-all duration-300" style={{ width: `${completeness}%` }} />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between px-2 pt-1">
                 <span className="text-xs font-extrabold text-slate-500 uppercase">{isAr ? 'أقسام السيرة الذاتية' : 'CV Sections'}</span>
                 <button onClick={addCustomSection} className="text-xs font-bold text-[#2563EB] flex items-center gap-1 hover:underline">
                   <Plus className="w-3.5 h-3.5" /> {isAr ? 'قسم جديد' : 'Add'}
                 </button>
               </div>
-              {sections.map((sec, idx) => (
-                <div
-                  key={sec.id}
-                  className={`flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold transition ${activeSection === sec.id ? 'bg-[#0B1020] text-white' : 'hover:bg-slate-100 text-slate-700'}`}
-                >
-                  <button onClick={() => setActiveSection(sec.id)} className="flex-1 text-start truncate">
-                    {isAr ? sec.labelAr : sec.labelEn}
-                  </button>
-                  <div className="flex items-center gap-1">
-                    {sec.id !== 'personal' && (
-                      <>
-                        <button onClick={() => moveSection(idx, -1)} className="p-0.5 opacity-70 hover:opacity-100" title="Up"><ArrowUp className="w-3 h-3" /></button>
-                        <button onClick={() => moveSection(idx, 1)} className="p-0.5 opacity-70 hover:opacity-100" title="Down"><ArrowDown className="w-3 h-3" /></button>
-                        <input type="checkbox" checked={sec.visible} onChange={() => toggleSectionVisibility(sec.id)} title="Toggle" />
-                      </>
-                    )}
-                    {sec.isCustom && (
-                      <button onClick={() => deleteCustomSection(sec.id)} className="text-red-400 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
-                    )}
+
+              <div className="space-y-1">
+                {sections.map((sec, idx) => (
+                  <div
+                    key={sec.id}
+                    className={`flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold transition ${activeSection === sec.id ? 'bg-[#0B1020] text-white' : 'hover:bg-slate-100 text-slate-700'}`}
+                  >
+                    <button onClick={() => setActiveSection(sec.id)} className="flex-1 text-start truncate">
+                      {isAr ? sec.labelAr : sec.labelEn}
+                    </button>
+                    <div className="flex items-center gap-1">
+                      {sec.id !== 'personal' && (
+                        <>
+                          <button onClick={() => moveSection(idx, -1)} className="p-0.5 opacity-70 hover:opacity-100" title="Up"><ArrowUp className="w-3 h-3" /></button>
+                          <button onClick={() => moveSection(idx, 1)} className="p-0.5 opacity-70 hover:opacity-100" title="Down"><ArrowDown className="w-3 h-3" /></button>
+                          <input type="checkbox" checked={sec.visible} onChange={() => toggleSectionVisibility(sec.id)} title="Toggle" />
+                        </>
+                      )}
+                      {sec.isCustom && (
+                        <button onClick={() => deleteCustomSection(sec.id)} className="text-red-400 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </aside>
 
             {/* Pane 2: Data Editor */}
             <section className={`lg:col-span-4 bg-white rounded-2xl border border-slate-200 p-5 h-fit space-y-4 no-print ${mobileTab === 'preview' ? 'hidden lg:block' : ''}`}>
               {activeSection === 'personal' && (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <h2 className="font-extrabold text-lg">{isAr ? 'المعلومات الشخصية' : 'Personal Information'}</h2>
+
+                  {/* Enhanced Optional Photo Box */}
+                  <div className="p-4 rounded-2xl bg-[#F5F7FB] border border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-[#0B1020] flex items-center gap-1.5">
+                        <Camera className="w-4 h-4 text-[#2563EB]" />
+                        {isAr ? 'الصورة الشخصية (اختيارية)' : 'Profile Photo (Optional)'}
+                      </span>
+                      <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={design.showPhoto}
+                          onChange={e => setDesign(d => ({ ...d, showPhoto: e.target.checked }))}
+                        />
+                        {isAr ? 'إظهار في السيرة' : 'Show on CV'}
+                      </label>
+                    </div>
+
+                    {selectedTemplate === 'ats' && cv.personal.photo && (
+                      <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-800 flex items-start gap-1.5">
+                        <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>{isAr ? 'قالب ATS يخفي الصورة تلقائيًا لرفع نسبة القبول الآلي. اختر قالبًا آخر لإظهار الصورة.' : 'ATS template hides photos automatically for scanner compatibility. Pick another template to show it.'}</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-4">
+                      <div className={`w-16 h-16 ${design.photoShape === 'rounded' ? 'rounded-xl' : design.photoShape === 'square' ? 'rounded-none' : 'rounded-full'} bg-white border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden shrink-0`}>
+                        {cv.personal.photo ? (
+                          <img src={cv.personal.photo} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          <Camera className="w-6 h-6 text-slate-400" />
+                        )}
+                      </div>
+                      <div className="flex-1 space-y-2 text-xs">
+                        <div className="flex flex-wrap gap-2">
+                          <label className="cursor-pointer px-3 py-1.5 rounded-lg bg-[#2563EB] text-white font-bold hover:opacity-95 inline-flex items-center gap-1.5">
+                            <Upload className="w-3.5 h-3.5" />
+                            {cv.personal.photo ? (isAr ? 'تغيير الصورة' : 'Change') : (isAr ? 'رفع صورة' : 'Upload')}
+                            <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                          </label>
+                          {cv.personal.photo && (
+                            <button onClick={handleRemovePhoto} className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 font-bold hover:bg-red-100 inline-flex items-center gap-1">
+                              <ImageOff className="w-3.5 h-3.5" /> {isAr ? 'حذف' : 'Remove'}
+                            </button>
+                          )}
+                        </div>
+                        {cv.personal.photo && (
+                          <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-600">
+                            <label className="flex items-center gap-1 cursor-pointer">
+                              <input type="radio" name="photoShape" checked={design.photoShape === 'circle'} onChange={() => setDesign(d => ({ ...d, photoShape: 'circle' }))} />
+                              {isAr ? 'دائرية' : 'Circle'}
+                            </label>
+                            <label className="flex items-center gap-1 cursor-pointer">
+                              <input type="radio" name="photoShape" checked={design.photoShape === 'rounded'} onChange={() => setDesign(d => ({ ...d, photoShape: 'rounded' }))} />
+                              {isAr ? 'مربعة ناعمة' : 'Rounded'}
+                            </label>
+                            <label className="flex items-center gap-1 cursor-pointer">
+                              <input type="radio" name="photoShape" checked={design.photoShape === 'square'} onChange={() => setDesign(d => ({ ...d, photoShape: 'square' }))} />
+                              {isAr ? 'رسمية' : 'Square'}
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid sm:grid-cols-2 gap-3 text-xs">
                     <input className="border rounded-xl p-2.5" placeholder={isAr ? 'الاسم الكامل' : 'Full Name'} value={cv.personal.fullName} onChange={e => updatePersonal('fullName', e.target.value)} />
                     <input className="border rounded-xl p-2.5" placeholder={isAr ? 'المسمى الوظيفي' : 'Job Title'} value={cv.personal.jobTitle} onChange={e => updatePersonal('jobTitle', e.target.value)} />
@@ -986,10 +1410,6 @@ export default function App() {
                     <input className="border rounded-xl p-2.5" placeholder="LinkedIn" value={cv.personal.linkedin} onChange={e => updatePersonal('linkedin', e.target.value)} />
                     <input className="border rounded-xl p-2.5" placeholder="GitHub" value={cv.personal.github} onChange={e => updatePersonal('github', e.target.value)} />
                     <input className="border rounded-xl p-2.5 sm:col-span-2" placeholder={isAr ? 'الموقع الشخصي' : 'Personal Website'} value={cv.personal.website} onChange={e => updatePersonal('website', e.target.value)} />
-                  </div>
-                  <div className="pt-2">
-                    <label className="text-xs font-bold block mb-1.5">{isAr ? 'الصورة الشخصية (اختيارية - داخل المتصفح فقط)' : 'Profile Photo (Optional)'}</label>
-                    <input type="file" accept="image/*" onChange={handlePhotoUpload} className="text-xs" />
                   </div>
                 </div>
               )}
@@ -1016,10 +1436,11 @@ export default function App() {
                     <div key={exp.id} className="p-3 rounded-xl bg-slate-50 border space-y-2">
                       <div className="flex justify-end"><button onClick={() => removeItem('experience', exp.id)} className="text-red-500"><Trash2 className="w-4 h-4" /></button></div>
                       <input className="w-full border rounded-lg p-2 bg-white" placeholder={isAr ? 'المسمى الوظيفي' : 'Role'} value={exp.role} onChange={e => updateItem('experience', exp.id, 'role', e.target.value)} />
-                      <input className="w-full border rounded-lg p-2 bg-white" placeholder={isAr ? 'اسم الشركة' : 'Company'} value={exp.company} onChange={e => updateItem('experience', exp.id, 'company', e.target.value)} />
                       <div className="grid grid-cols-2 gap-2">
-                        <input className="border rounded-lg p-2 bg-white" placeholder={isAr ? 'من' : 'Start'} value={exp.start} onChange={e => updateItem('experience', exp.id, 'start', e.target.value)} />
-                        <input className="border rounded-lg p-2 bg-white" placeholder={isAr ? 'إلى' : 'End'} value={exp.end} onChange={e => updateItem('experience', exp.id, 'end', e.target.value)} />
+                        <input className="border rounded-lg p-2 bg-white" placeholder={isAr ? 'اسم الشركة' : 'Company'} value={exp.company} onChange={e => updateItem('experience', exp.id, 'company', e.target.value)} />
+                        <input className="border rounded-lg p-2 bg-white" placeholder={isAr ? 'مكان العمل' : 'Location'} value={exp.location} onChange={e => updateItem('experience', exp.id, 'location', e.target.value)} />
+                        <input className="border rounded-lg p-2 bg-white" placeholder={isAr ? 'من (تاريخ البداية)' : 'Start Date'} value={exp.start} onChange={e => updateItem('experience', exp.id, 'start', e.target.value)} />
+                        <input className="border rounded-lg p-2 bg-white" placeholder={isAr ? 'إلى (تاريخ النهاية)' : 'End Date'} value={exp.end} onChange={e => updateItem('experience', exp.id, 'end', e.target.value)} />
                       </div>
                       <textarea rows={2} className="w-full border rounded-lg p-2 bg-white" placeholder={isAr ? 'المهام والمسؤوليات' : 'Responsibilities'} value={exp.description} onChange={e => updateItem('experience', exp.id, 'description', e.target.value)} />
                       <input className="w-full border rounded-lg p-2 bg-white" placeholder={isAr ? 'أبرز الإنجازات' : 'Key Achievements'} value={exp.achievements} onChange={e => updateItem('experience', exp.id, 'achievements', e.target.value)} />
@@ -1054,13 +1475,18 @@ export default function App() {
                 <div className="space-y-3 text-xs">
                   <div className="flex justify-between items-center">
                     <h2 className="font-extrabold text-lg">{isAr ? 'المهارات' : 'Skills'}</h2>
-                    <button onClick={() => addItem('skills', { name: '', category: '', level: '' })} className="px-3 py-1.5 rounded-lg bg-[#2563EB] text-white font-bold flex items-center gap-1"><Plus className="w-3.5 h-3.5" /> {isAr ? 'إضافة مهارة' : 'Add'}</button>
+                    <button onClick={() => addItem('skills', { name: '', category: isAr ? 'تقنية' : 'Technical', level: '' })} className="px-3 py-1.5 rounded-lg bg-[#2563EB] text-white font-bold flex items-center gap-1"><Plus className="w-3.5 h-3.5" /> {isAr ? 'إضافة مهارة' : 'Add'}</button>
                   </div>
                   {cv.skills.map(sk => (
-                    <div key={sk.id} className="flex gap-2 items-center">
-                      <input className="flex-1 border rounded-lg p-2" placeholder={isAr ? 'اسم المهارة' : 'Skill'} value={sk.name} onChange={e => updateItem('skills', sk.id, 'name', e.target.value)} />
-                      <input className="w-24 border rounded-lg p-2" placeholder={isAr ? 'المستوى' : 'Level'} value={sk.level} onChange={e => updateItem('skills', sk.id, 'level', e.target.value)} />
-                      <button onClick={() => removeItem('skills', sk.id)} className="text-red-500"><Trash2 className="w-4 h-4" /></button>
+                    <div key={sk.id} className="grid grid-cols-12 gap-1.5 items-center">
+                      <input className="col-span-5 border rounded-lg p-2" placeholder={isAr ? 'اسم المهارة' : 'Skill'} value={sk.name} onChange={e => updateItem('skills', sk.id, 'name', e.target.value)} />
+                      <select className="col-span-3 border rounded-lg p-2 bg-white" value={sk.category} onChange={e => updateItem('skills', sk.id, 'category', e.target.value)}>
+                        <option value={isAr ? 'تقنية' : 'Technical'}>{isAr ? 'تقنية' : 'Technical'}</option>
+                        <option value={isAr ? 'شخصية' : 'Soft'}>{isAr ? 'شخصية' : 'Soft'}</option>
+                        <option value={isAr ? 'إدارية' : 'Management'}>{isAr ? 'إدارية' : 'Management'}</option>
+                      </select>
+                      <input className="col-span-3 border rounded-lg p-2" placeholder={isAr ? 'المستوى' : 'Level'} value={sk.level} onChange={e => updateItem('skills', sk.id, 'level', e.target.value)} />
+                      <button onClick={() => removeItem('skills', sk.id)} className="col-span-1 text-red-500 flex justify-center"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   ))}
                 </div>
@@ -1077,6 +1503,7 @@ export default function App() {
                       <div className="flex justify-end"><button onClick={() => removeItem('projects', pr.id)} className="text-red-500"><Trash2 className="w-4 h-4" /></button></div>
                       <input className="w-full border rounded-lg p-2 bg-white" placeholder={isAr ? 'اسم المشروع' : 'Project Name'} value={pr.name} onChange={e => updateItem('projects', pr.id, 'name', e.target.value)} />
                       <input className="w-full border rounded-lg p-2 bg-white" placeholder={isAr ? 'التقنيات المستخدمة' : 'Technologies'} value={pr.tech} onChange={e => updateItem('projects', pr.id, 'tech', e.target.value)} />
+                      <input className="w-full border rounded-lg p-2 bg-white" placeholder={isAr ? 'رابط المشروع (اختياري)' : 'Project Link (Optional)'} value={pr.link} onChange={e => updateItem('projects', pr.id, 'link', e.target.value)} />
                       <textarea rows={2} className="w-full border rounded-lg p-2 bg-white" placeholder={isAr ? 'وصف المشروع' : 'Description'} value={pr.description} onChange={e => updateItem('projects', pr.id, 'description', e.target.value)} />
                     </div>
                   ))}
@@ -1097,6 +1524,7 @@ export default function App() {
                         <input className="border rounded-lg p-2 bg-white" placeholder={isAr ? 'الجهة المانحة' : 'Issuer'} value={c.issuer} onChange={e => updateItem('certifications', c.id, 'issuer', e.target.value)} />
                         <input className="border rounded-lg p-2 bg-white" placeholder={isAr ? 'التاريخ' : 'Date'} value={c.date} onChange={e => updateItem('certifications', c.id, 'date', e.target.value)} />
                       </div>
+                      <input className="w-full border rounded-lg p-2 bg-white" placeholder={isAr ? 'رابط الشهادة (اختياري)' : 'Certificate Link (Optional)'} value={c.link} onChange={e => updateItem('certifications', c.id, 'link', e.target.value)} />
                     </div>
                   ))}
                 </div>
@@ -1128,7 +1556,10 @@ export default function App() {
                     <div key={v.id} className="p-3 rounded-xl bg-slate-50 border space-y-2">
                       <div className="flex justify-end"><button onClick={() => removeItem('volunteering', v.id)} className="text-red-500"><Trash2 className="w-4 h-4" /></button></div>
                       <input className="w-full border rounded-lg p-2 bg-white" placeholder={isAr ? 'النشاط أو المبادرة' : 'Title'} value={v.title} onChange={e => updateItem('volunteering', v.id, 'title', e.target.value)} />
-                      <input className="w-full border rounded-lg p-2 bg-white" placeholder={isAr ? 'الجهة' : 'Organization'} value={v.org} onChange={e => updateItem('volunteering', v.id, 'org', e.target.value)} />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input className="border rounded-lg p-2 bg-white" placeholder={isAr ? 'الجهة' : 'Organization'} value={v.org} onChange={e => updateItem('volunteering', v.id, 'org', e.target.value)} />
+                        <input className="border rounded-lg p-2 bg-white" placeholder={isAr ? 'الفترة الزمنية' : 'Period'} value={v.period} onChange={e => updateItem('volunteering', v.id, 'period', e.target.value)} />
+                      </div>
                       <textarea rows={2} className="w-full border rounded-lg p-2 bg-white" placeholder={isAr ? 'التفاصيل' : 'Details'} value={v.details} onChange={e => updateItem('volunteering', v.id, 'details', e.target.value)} />
                     </div>
                   ))}
@@ -1177,10 +1608,30 @@ export default function App() {
                   </div>
                 );
               })()}
+
+              {/* Quick Section Navigation Footer */}
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-xs font-bold">
+                <button
+                  onClick={goPrevSection}
+                  disabled={activeIdx <= 0}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 disabled:opacity-40 hover:bg-slate-50 flex items-center gap-1"
+                >
+                  {isAr ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+                  {isAr ? 'القسم السابق' : 'Previous'}
+                </button>
+                <button
+                  onClick={goNextSection}
+                  disabled={activeIdx >= sections.length - 1}
+                  className="px-3 py-1.5 rounded-lg bg-[#0B1020] text-white disabled:opacity-40 hover:bg-[#2563EB] transition flex items-center gap-1"
+                >
+                  {isAr ? 'القسم التالي' : 'Next'}
+                  {isAr ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                </button>
+              </div>
             </section>
 
             {/* Pane 3: Live A4 Preview */}
-            <section className={`lg:col-span-5 flex flex-col items-center ${mobileTab === 'edit' ? 'hidden lg:flex' : ''}`}>
+            <section className={`lg:col-span-5 flex flex-col items-center print-main ${mobileTab === 'edit' ? 'hidden lg:flex' : ''}`}>
               <div className="w-full flex items-center justify-between bg-white rounded-xl border border-slate-200 px-3 py-2 mb-3 text-xs no-print">
                 <span className="font-bold text-slate-600">{isAr ? 'معاينة مباشرة (A4)' : 'Live A4 Preview'}</span>
                 <div className="flex items-center gap-2">
@@ -1189,8 +1640,8 @@ export default function App() {
                   <button onClick={() => setZoom(z => Math.min(1.1, +(z + 0.1).toFixed(2)))} className="p-1 rounded hover:bg-slate-100"><ZoomIn className="w-4 h-4" /></button>
                 </div>
               </div>
-              <div className="w-full overflow-auto flex justify-center pb-8">
-                <div style={{ width: '210mm', transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
+              <div className="w-full overflow-auto flex justify-center pb-8 print-main">
+                <div className="print-reset-wrapper" style={{ width: '210mm', transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
                   {renderCVDocument()}
                 </div>
               </div>
@@ -1201,7 +1652,7 @@ export default function App() {
 
       {/* EXPORT VIEW */}
       {view === 'export' && (
-        <main className="flex-1 max-w-5xl mx-auto px-4 py-8 w-full space-y-6">
+        <main className="flex-1 max-w-5xl mx-auto px-4 py-8 w-full space-y-6 print-main">
           <div className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-wrap items-center justify-between gap-4 no-print">
             <div>
               <h1 className="text-2xl font-extrabold">{t.exportReady}</h1>
@@ -1223,8 +1674,8 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex justify-center overflow-auto">
-            <div className="w-[210mm]">{renderCVDocument()}</div>
+          <div className="flex justify-center overflow-auto print-main">
+            <div className="w-[210mm] print-reset-wrapper">{renderCVDocument()}</div>
           </div>
         </main>
       )}
@@ -1267,7 +1718,7 @@ export default function App() {
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowClearModal(false)} className="px-4 py-2 rounded-lg border text-xs font-bold">{isAr ? 'إلغاء' : 'Cancel'}</button>
               <button
-                onClick={() => { setCv(EMPTY_CV); setSections(DEFAULT_SECTIONS); setShowClearModal(false); }}
+                onClick={() => { setCv(EMPTY_CV); setSections(DEFAULT_SECTIONS); setShowClearModal(false); notify(isAr ? 'تم مسح كافة البيانات' : 'All data cleared'); }}
                 className="px-4 py-2 rounded-lg bg-red-600 text-white text-xs font-bold"
               >
                 {isAr ? 'نعم، امسح الكل' : 'Yes, Clear All'}
