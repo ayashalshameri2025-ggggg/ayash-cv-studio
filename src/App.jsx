@@ -3,7 +3,7 @@ import {
   Sparkles, Shield, Download, Globe, Layout, CheckCircle2,
   ChevronRight, ChevronLeft, Plus, Trash2, Eye, Palette, ArrowUp, ArrowDown,
   RotateCcw, ZoomIn, ZoomOut, Printer, FileDown, Menu, X, ChevronDown,
-  Lock, Upload, AlertTriangle, Camera, ImageOff, Info, FileUp, FileJson, ClipboardPaste, ShieldCheck, Target, Award, SearchCheck
+  Lock, Upload, AlertTriangle, Camera, ImageOff, Info, FileUp, FileJson, ClipboardPaste, ShieldCheck, Target, Award, SearchCheck, MessageCircle, Mail, Linkedin, ExternalLink
 } from 'lucide-react';
 
 const TEMPLATES = [
@@ -19,6 +19,20 @@ const TEMPLATES = [
   { id: 'international', nameAr: 'الاحترافي الدولي', nameEn: 'International Professional', descAr: 'ترويسة بطاقية حديثة وشبكة سفلية منظمة للتقديم الدولي.', descEn: 'Global standard card header with balanced two-column footer grid.', layout: 'global-card', tag: 'Global' },
 ];
 
+
+
+// بيانات التواصل الخاصة بالمطور
+const DEVELOPER_INFO = {
+  name: 'AYASH MAHMOUD ALSHAMERI',
+  nameAr: 'م. عياش محمود الشميري',
+  title: 'Software & AI Developer',
+  tagline: 'Code meets intelligence.',
+  whatsapp: 'https://wa.me/967779189823',
+  email: 'mailto:ayashalshameri2025@gmail.com',
+  website: 'https://ayash-cv-studio.netlify.app/',
+  smartmed: 'https://helpful-halva-0e0635.netlify.app/',
+  linkedin: 'https://linkedin.com/in/ayash-alshameri',
+};
 
 const ATS_TEMPLATES = [
   {
@@ -281,116 +295,264 @@ const escapeHtml = (str = '') =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
-// Smart client-side CV text parser (supports Arabic & English plain text / Word HTML)
+// Smart client-side CV text parser v2 (supports Arabic & English, multi-entries, and auto-creates Custom Sections for extra headings)
 function parseRawCVText(rawText, isAr) {
-  const clean = rawText.replace(/<[^>]+>/g, '\n').replace(/\r/g, '');
-  const lines = clean.split('\n').map(l => l.trim()).filter(Boolean);
+  const clean = rawText
+    .replace(/<style[\s\S]*?<\/style>/gi, '\n')
+    .replace(/<script[\s\S]*?<\/script>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|tr|h[1-6])>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/\r/g, '');
 
+  const rawLines = clean.split('\n').map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
   const parsed = JSON.parse(JSON.stringify(EMPTY_CV));
-  if (lines.length === 0) return parsed;
+  const newCustomSectionDefs = [];
+  if (rawLines.length === 0) return { cvData: parsed, newCustomSectionDefs };
 
-  // Extract contact details via regex
+  // 1. Extract contact details via regex
   const emailMatch = clean.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
   const phoneMatch = clean.match(/(?:\+?\d[\d\s\-()]{7,16}\d)/);
   const linkedinMatch = clean.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/[^\s,]+/i);
   const githubMatch = clean.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/[^\s,]+/i);
+  const webMatch = clean.match(/(?:https?:\/\/)?(?:www\.)?(?!linkedin\.com|github\.com)[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s,]*)?/i);
 
   if (emailMatch) parsed.personal.email = emailMatch[0];
   if (phoneMatch) parsed.personal.phone = phoneMatch[0].trim();
   if (linkedinMatch) parsed.personal.linkedin = linkedinMatch[0];
   if (githubMatch) parsed.personal.github = githubMatch[0];
+  if (webMatch && !webMatch[0].includes('@')) parsed.personal.website = webMatch[0];
 
-  // First 2 non-contact lines are usually Name & Job Title
-  const headerCandidates = lines.filter(l => !l.includes('@') && !l.match(/^\+?\d[\d\s-]{6,}$/) && l.length < 70);
-  if (headerCandidates[0]) parsed.personal.fullName = headerCandidates[0];
-  if (headerCandidates[1]) parsed.personal.jobTitle = headerCandidates[1];
+  // 2. Check inline key:value labels for personal info
+  const consumedIndices = new Set();
+  rawLines.forEach((line, idx) => {
+    const mName = line.match(/^(?:الاسم(?:\s+الكامل)?|name|full\s*name)\s*[:：\-]\s*(.+)$/i);
+    if (mName) { parsed.personal.fullName = mName[1].trim(); consumedIndices.add(idx); return; }
 
-  // Detect sections by common Arabic/English headings
-  let currentBucket = 'summary';
-  const buckets = { summary: [], experience: [], education: [], skills: [], languages: [], projects: [], certifications: [] };
+    const mTitle = line.match(/^(?:المسمى\s*الوظيفي|الوظيفة|التخصص|job\s*title|title|position)\s*[:：\-]\s*(.+)$/i);
+    if (mTitle) { parsed.personal.jobTitle = mTitle[1].trim(); consumedIndices.add(idx); return; }
 
-  const headingPatterns = [
-    { key: 'summary', rx: /^(النبذة|ملخص|الملخص|نبذة|summary|about|profile|objective)/i },
-    { key: 'experience', rx: /^(الخبرات|خبرة|الخبرة|experience|work|employment)/i },
-    { key: 'education', rx: /^(التعليم|المؤهلات|الدراسة|education|academic)/i },
-    { key: 'skills', rx: /^(المهارات|مهارات|skills|competencies)/i },
-    { key: 'languages', rx: /^(اللغات|لغات|languages)/i },
-    { key: 'projects', rx: /^(المشاريع|مشاريع|projects)/i },
-    { key: 'certifications', rx: /^(الدورات|الشهادات|certifications|courses)/i },
+    const mLoc = line.match(/^(?:الدولة|المدينة|الموقع|السكن|location|city|country)\s*[:：\-]\s*(.+)$/i);
+    if (mLoc && !mLoc[1].includes('http')) { parsed.personal.location = mLoc[1].trim(); consumedIndices.add(idx); return; }
+
+    const mAddr = line.match(/^(?:العنوان|address)\s*[:：\-]\s*(.+)$/i);
+    if (mAddr) { parsed.personal.address = mAddr[1].trim(); consumedIndices.add(idx); return; }
+  });
+
+  // Fallback for Name & Job Title from first 2 clean lines
+  const headerCandidates = rawLines.filter((l, i) =>
+    !consumedIndices.has(i) && !l.includes('@') && !l.match(/^\+?\d[\d\s\-()]{6,}$/) && !l.includes('http') && l.length < 75
+  );
+  if (!parsed.personal.fullName && headerCandidates[0]) parsed.personal.fullName = headerCandidates[0];
+  if (!parsed.personal.jobTitle && headerCandidates[1]) parsed.personal.jobTitle = headerCandidates[1];
+
+  // 3. Standard section heading matchers (Arabic & English)
+  const standardHeadings = [
+    { key: 'summary', rx: /^(?:النبذة|نبذة|ملخص|الملخص|نبذة\s*شخصية|ملخص\s*مهني|عنّي|عني|الأهداف\s*المهنية|summary|professional\s*summary|about|about\s*me|profile|objective)/i },
+    { key: 'experience', rx: /^(?:الخبرات|الخبرة|خبرات|الخبرات\s*المهنية|الخبرات\s*العملية|التاريخ\s*الوظيفي|experience|work\s*experience|employment|professional\s*experience|career\s*history)/i },
+    { key: 'education', rx: /^(?:التعليم|المؤهلات|المؤهلات\s*العلمية|الدراسة|التحصيل\s*العلمي|education|academic\s*background|qualifications)/i },
+    { key: 'skills', rx: /^(?:المهارات|مهارات|المهارات\s*التقنية|المهارات\s*الشخصية|المهارات\s*الإدارية|الكفاءات|skills|technical\s*skills|soft\s*skills|competencies|core\s*skills)/i },
+    { key: 'projects', rx: /^(?:المشاريع|مشاريع|أبرز\s*المشاريع|الأعمال|projects|key\s*projects|portfolio)/i },
+    { key: 'certifications', rx: /^(?:الدورات|الشهادات|الدورات\s*التدريبية|الدورات\s*والشهادات|التدريب|certifications|certificates|courses|training)/i },
+    { key: 'languages', rx: /^(?:اللغات|لغات|languages)/i },
+    { key: 'volunteering', rx: /^(?:التطوع|الأعمال\s*التطوعية|الأنشطة|العمل\s*التطوعي|الأنشطة\s*التطوعية|volunteering|volunteer|activities|community)/i },
+    { key: 'references', rx: /^(?:المراجع|المعرفون|المعرّفون|references|referees)/i },
   ];
 
-  lines.slice(2).forEach(line => {
-    const matched = headingPatterns.find(h => h.rx.test(line) && line.length < 40);
-    if (matched) {
-      currentBucket = matched.key;
-    } else {
-      buckets[currentBucket].push(line);
+  // Extra headings that are NOT in standard 10 -> auto-create Custom Section!
+  const extraHeadingRx = /^(?:الجوائز|التكريمات|الإنجازات|الأبحاث|المنشورات|العضويات|الهوايات|الاهتمامات|المعلومات\s*الإضافية|البيانات\s*الشخصية|رخصة\s*القيادة|awards|honors|publications|research|memberships|hobbies|interests|additional\s*info|achievements|patents)\s*[:：\-]?$/i;
+
+  const isGenericHeading = (line) => {
+    if (line.length > 42 || line.length < 3) return false;
+    if (/[.,،;؛@]/.test(line) || /\d{4}/.test(line)) return false;
+    if (extraHeadingRx.test(line)) return true;
+    // Ends with colon and is short (e.g. "الجوائز والتكريمات:")
+    if (/[:：]$/.test(line) && line.split(' ').length <= 4) return true;
+    return false;
+  };
+
+  let currentKey = 'summary';
+  let currentCustomId = null;
+  const buckets = {
+    summary: [], experience: [], education: [], skills: [],
+    projects: [], certifications: [], languages: [], volunteering: [], references: []
+  };
+  const customBuckets = {}; // id -> { title, lines: [] }
+
+  const startIdx = rawLines.findIndex(l => l === parsed.personal.jobTitle || l === parsed.personal.fullName);
+  const bodyLines = rawLines.slice(Math.max(0, startIdx + 1));
+
+  bodyLines.forEach(line => {
+    if (line === parsed.personal.fullName || line === parsed.personal.jobTitle) return;
+    const cleanHeading = line.replace(/[:：\-]+$/, '').trim();
+
+    const stdMatch = standardHeadings.find(h => h.rx.test(cleanHeading) && cleanHeading.length <= 42);
+    if (stdMatch) {
+      currentKey = stdMatch.key;
+      currentCustomId = null;
+      return;
+    }
+
+    if (isGenericHeading(line)) {
+      const cid = `custom_${Date.now()}_${Object.keys(customBuckets).length + 1}`;
+      customBuckets[cid] = { title: cleanHeading, lines: [] };
+      currentKey = 'custom';
+      currentCustomId = cid;
+      return;
+    }
+
+    if (currentKey === 'custom' && currentCustomId) {
+      customBuckets[currentCustomId].lines.push(line);
+    } else if (buckets[currentKey]) {
+      buckets[currentKey].push(line);
     }
   });
 
+  // 4. Populate Summary
   if (buckets.summary.length > 0) {
-    parsed.summary.bio = buckets.summary.slice(0, 4).join(' ');
+    parsed.summary.bio = buckets.summary.join(' ');
   }
+
+  // 5. Populate Experience (smart multi-entry split)
   if (buckets.experience.length > 0) {
-    parsed.experience.push({
-      id: Date.now() + 1,
-      role: buckets.experience[0] || '',
-      company: buckets.experience[1] || '',
-      location: '',
-      start: '',
-      end: '',
-      description: buckets.experience.slice(2).join('\n'),
-      achievements: ''
+    const expLines = buckets.experience;
+    let currentExp = null;
+    expLines.forEach((line, i) => {
+      const hasDate = /(?:19|20)\d{2}|حتى الآن|present|current/i.test(line);
+      const isBullet = /^[-•*★▪]/.test(line);
+      if (!currentExp || (!isBullet && hasDate && currentExp.description)) {
+        if (currentExp) parsed.experience.push(currentExp);
+        currentExp = { id: Date.now() + 100 + i, role: line.replace(/^[-•*▪]\s*/, ''), company: '', location: '', start: '', end: '', description: '', achievements: '' };
+      } else if (!currentExp.company && !isBullet && line.length < 65) {
+        currentExp.company = line;
+      } else {
+        currentExp.description = currentExp.description ? `${currentExp.description}\n${line}` : line;
+      }
     });
+    if (currentExp) parsed.experience.push(currentExp);
   }
+
+  // 6. Populate Education
   if (buckets.education.length > 0) {
-    parsed.education.push({
-      id: Date.now() + 2,
-      degree: buckets.education[0] || '',
-      institution: buckets.education[1] || '',
-      major: buckets.education[2] || '',
-      start: '',
-      end: '',
-      gpa: ''
+    const eduLines = buckets.education;
+    let currentEdu = null;
+    eduLines.forEach((line, i) => {
+      const isDegree = /بكالوريوس|ماجستير|دكتوراه|دبلوم|ثانوية|bachelor|master|phd|b\.sc|m\.sc|diploma/i.test(line);
+      if (!currentEdu || (isDegree && currentEdu.institution)) {
+        if (currentEdu) parsed.education.push(currentEdu);
+        currentEdu = { id: Date.now() + 200 + i, degree: line, institution: '', major: '', start: '', end: '', gpa: '' };
+      } else if (!currentEdu.institution) {
+        currentEdu.institution = line;
+      } else if (!currentEdu.major) {
+        currentEdu.major = line;
+      } else {
+        currentEdu.gpa = line;
+      }
     });
+    if (currentEdu) parsed.education.push(currentEdu);
   }
+
+  // 7. Populate Skills (supports comma, bullet, pipe, or line-by-line)
   if (buckets.skills.length > 0) {
-    const rawSkills = buckets.skills.join(',').split(/[,،•|·]/).map(s => s.trim()).filter(Boolean).slice(0, 15);
+    const rawSkills = buckets.skills
+      .join('\n')
+      .split(/[\n,،•|·▪]/)
+      .map(s => s.replace(/^[-*]\s*/, '').trim())
+      .filter(s => s.length >= 2 && s.length <= 50)
+      .slice(0, 25);
     parsed.skills = rawSkills.map((name, idx) => ({
-      id: Date.now() + 10 + idx,
+      id: Date.now() + 300 + idx,
       name,
       category: isAr ? 'تقنية' : 'Technical',
       level: ''
     }));
   }
-  if (buckets.languages.length > 0) {
-    const rawLangs = buckets.languages.join(',').split(/[,،•|·]/).map(s => s.trim()).filter(Boolean).slice(0, 6);
-    parsed.languages = rawLangs.map((name, idx) => ({
-      id: Date.now() + 40 + idx,
-      name,
-      level: ''
-    }));
-  }
+
+  // 8. Populate Projects
   if (buckets.projects.length > 0) {
     parsed.projects.push({
-      id: Date.now() + 60,
-      name: buckets.projects[0],
+      id: Date.now() + 400,
+      name: buckets.projects[0].replace(/^[-•*]\s*/, ''),
       tech: '',
-      description: buckets.projects.slice(1).join(' '),
+      description: buckets.projects.slice(1).join('\n'),
       link: ''
     });
   }
+
+  // 9. Populate Certifications
   if (buckets.certifications.length > 0) {
-    parsed.certifications = buckets.certifications.slice(0, 8).map((title, idx) => ({
-      id: Date.now() + 70 + idx,
-      title,
-      issuer: '',
-      date: '',
-      link: ''
+    parsed.certifications = buckets.certifications.slice(0, 12).map((line, idx) => {
+      const parts = line.replace(/^[-•*]\s*/, '').split(/[-–—|]/);
+      return {
+        id: Date.now() + 500 + idx,
+        title: (parts[0] || line).trim(),
+        issuer: (parts[1] || '').trim(),
+        date: (parts[2] || '').trim(),
+        link: ''
+      };
+    });
+  }
+
+  // 10. Populate Languages
+  if (buckets.languages.length > 0) {
+    const rawLangs = buckets.languages
+      .join('\n')
+      .split(/[\n,،•|·]/)
+      .map(s => s.replace(/^[-*]\s*/, '').trim())
+      .filter(Boolean)
+      .slice(0, 8);
+    parsed.languages = rawLangs.map((item, idx) => {
+      const parts = item.split(/[:：\-–(]/);
+      return {
+        id: Date.now() + 600 + idx,
+        name: (parts[0] || item).trim(),
+        level: (parts[1] || '').replace(/\)$/, '').trim()
+      };
+    });
+  }
+
+  // 11. Populate Volunteering
+  if (buckets.volunteering.length > 0) {
+    parsed.volunteering = buckets.volunteering.slice(0, 8).map((line, idx) => ({
+      id: Date.now() + 700 + idx,
+      title: line.replace(/^[-•*]\s*/, ''),
+      org: '',
+      period: '',
+      details: ''
     }));
   }
 
-  return parsed;
+  // 12. Populate References
+  if (buckets.references.length > 0) {
+    parsed.references = buckets.references.slice(0, 6).map((line, idx) => ({
+      id: Date.now() + 800 + idx,
+      name: line.replace(/^[-•*]\s*/, ''),
+      role: '',
+      contact: ''
+    }));
+  }
+
+  // 13. Auto-create Custom Sections for any extra data not in standard template!
+  Object.entries(customBuckets).forEach(([cid, obj]) => {
+    if (obj.lines.length > 0) {
+      parsed.customSections.push({
+        id: cid,
+        title: obj.title,
+        content: obj.lines.join('\n')
+      });
+      newCustomSectionDefs.push({
+        id: cid,
+        labelAr: obj.title,
+        labelEn: obj.title,
+        visible: true,
+        isCustom: true
+      });
+    }
+  });
+
+  return { cvData: parsed, newCustomSectionDefs };
 }
 
 // Responsive A4 Scaler: guarantees ZERO horizontal scroll on iPhone, Android, iPad, Desktop
@@ -617,7 +779,14 @@ export default function App() {
         try {
           const data = JSON.parse(content);
           if (data.personal) {
-            setCv({ ...EMPTY_CV, ...data, personal: { ...EMPTY_CV.personal, ...data.personal }, summary: { ...EMPTY_CV.summary, ...(data.summary || {}) } });
+            const merged = { ...EMPTY_CV, ...data, personal: { ...EMPTY_CV.personal, ...data.personal }, summary: { ...EMPTY_CV.summary, ...(data.summary || {}) } };
+            setCv(merged);
+            if (Array.isArray(merged.customSections) && merged.customSections.length > 0) {
+              setSections(prev => [
+                ...prev.filter(s => !s.isCustom),
+                ...merged.customSections.map(c => ({ id: c.id, labelAr: c.title, labelEn: c.title, visible: true, isCustom: true }))
+              ]);
+            }
             setShowImportModal(false);
             setView('builder');
             notify(isAr ? 'تم استيراد بيانات السيرة الذاتية بنجاح!' : 'CV data imported successfully!');
@@ -629,11 +798,21 @@ export default function App() {
         }
       }
       // Otherwise parse text / HTML / .doc
-      const parsed = parseRawCVText(content, isAr);
-      setCv(parsed);
+      const { cvData, newCustomSectionDefs } = parseRawCVText(content, isAr);
+      setCv(cvData);
+      if (newCustomSectionDefs.length > 0) {
+        setSections(prev => [
+          ...prev.filter(s => !s.isCustom),
+          ...newCustomSectionDefs
+        ]);
+      }
       setShowImportModal(false);
       setView('builder');
-      notify(isAr ? 'تم استيراد البيانات وتعبئة النموذج تلقائيًا!' : 'CV imported and form filled!');
+      notify(
+        newCustomSectionDefs.length > 0
+          ? (isAr ? `تم استيراد البيانات وإضافة ${newCustomSectionDefs.length} قسم مخصص تلقائيًا!` : `CV imported with ${newCustomSectionDefs.length} custom section(s)!`)
+          : (isAr ? 'تم استيراد البيانات وتعبئة النموذج تلقائيًا!' : 'CV imported and form filled!')
+      );
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -641,12 +820,22 @@ export default function App() {
 
   const handleImportPastedText = () => {
     if (!pasteText.trim()) return;
-    const parsed = parseRawCVText(pasteText, isAr);
-    setCv(parsed);
+    const { cvData, newCustomSectionDefs } = parseRawCVText(pasteText, isAr);
+    setCv(cvData);
+    if (newCustomSectionDefs.length > 0) {
+      setSections(prev => [
+        ...prev.filter(s => !s.isCustom),
+        ...newCustomSectionDefs
+      ]);
+    }
     setPasteText('');
     setShowImportModal(false);
     setView('builder');
-    notify(isAr ? 'تم تحليل النص وتعبئة الحقول بنجاح!' : 'Text parsed and fields populated!');
+    notify(
+      newCustomSectionDefs.length > 0
+        ? (isAr ? `تم تحليل النص وإضافة ${newCustomSectionDefs.length} قسم مخصص تلقائيًا!` : `Parsed with ${newCustomSectionDefs.length} custom section(s)!`)
+        : (isAr ? 'تم تحليل النص وتعبئة الحقول بنجاح!' : 'Text parsed and fields populated!')
+    );
   };
 
   const handleExportJSON = () => {
@@ -2129,18 +2318,66 @@ export default function App() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="bg-[#0B1020] text-slate-300 py-8 mt-auto no-print">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-start">
-          <div>
-            <div className="font-extrabold text-white text-lg">AYASH CV STUDIO</div>
-            <div className="text-xs text-slate-400 mt-1">Build Your Career. Design Your Future.</div>
+      {/* Footer with Developer Contact Links */}
+      <footer className="bg-[#0B1020] text-slate-300 py-10 mt-auto border-t border-white/10 no-print">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-start">
+            <div>
+              <div className="font-extrabold text-white text-lg tracking-tight">AYASH CV STUDIO</div>
+              <div className="text-xs text-slate-400 mt-1">Build Your Career. Design Your Future.</div>
+            </div>
+
+            <div className="space-y-2 text-center md:text-end">
+              <div className="text-xs text-slate-400">{isAr ? 'تطوير وإشراف:' : 'Developed by:'}</div>
+              <div className="font-extrabold text-white text-sm">{DEVELOPER_INFO.name}</div>
+              <div className="text-xs text-blue-400">{DEVELOPER_INFO.title} • <span className="font-mono text-purple-400">{DEVELOPER_INFO.tagline}</span></div>
+            </div>
           </div>
-          <div className="text-xs space-y-0.5 sm:text-end">
-            <div className="text-slate-400">Developed by:</div>
-            <div className="font-bold text-white">AYASH MAHMOUD ALSHAMERI</div>
-            <div className="text-blue-400">Software & AI Developer</div>
-            <div className="font-mono text-[11px] text-purple-400">Code meets intelligence.</div>
+
+          <div className="pt-5 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-xs text-slate-400">
+              {isAr ? 'للتواصل مع المطور أو الاستفسار أو طلب خدمة:' : 'Contact the developer for inquiries or custom projects:'}
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <a
+                href={DEVELOPER_INFO.whatsapp}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow"
+              >
+                <MessageCircle className="w-4 h-4" /> {isAr ? 'واتساب' : 'WhatsApp'}
+              </a>
+              <a
+                href={DEVELOPER_INFO.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1.5 transition"
+              >
+                <Globe className="w-4 h-4 text-blue-400" /> {isAr ? 'الموقع الإلكتروني' : 'Website'}
+              </a>
+              <a
+                href={DEVELOPER_INFO.smartmed}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#7C3AED] hover:opacity-90 text-white text-xs font-bold flex items-center gap-1.5 transition shadow"
+              >
+                <ExternalLink className="w-4 h-4" /> SMARTMED AI
+              </a>
+              <a
+                href={DEVELOPER_INFO.email}
+                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1.5 transition"
+              >
+                <Mail className="w-4 h-4 text-purple-400" /> {isAr ? 'البريد الإلكتروني' : 'Email'}
+              </a>
+              <a
+                href={DEVELOPER_INFO.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-[#0A66C2] hover:opacity-90 text-white text-xs font-bold flex items-center gap-1.5 transition"
+              >
+                <Linkedin className="w-4 h-4" /> LinkedIn
+              </a>
+            </div>
           </div>
         </div>
       </footer>
