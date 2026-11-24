@@ -3,7 +3,7 @@ import {
   Sparkles, Shield, Download, Globe, Layout, CheckCircle2,
   ChevronRight, ChevronLeft, Plus, Trash2, Eye, Palette, ArrowUp, ArrowDown,
   RotateCcw, ZoomIn, ZoomOut, Printer, FileDown, Menu, X, ChevronDown,
-  Lock, Upload, AlertTriangle, Camera, ImageOff, Info, FileUp, FileJson, ClipboardPaste
+  Lock, Upload, AlertTriangle, Camera, ImageOff, Info, FileUp, FileJson, ClipboardPaste, ShieldCheck, Target, Award, SearchCheck
 } from 'lucide-react';
 
 const TEMPLATES = [
@@ -18,6 +18,117 @@ const TEMPLATES = [
   { id: 'graduate', nameAr: 'الخريجين الجدد', nameEn: 'Fresh Graduate', descAr: 'يبرز التعليم والمشاريع والمهارات والتطوع قبل الخبرة العملية.', descEn: 'Highlights education, projects, and skills first for new grads.', layout: 'graduate-focus', tag: 'Graduate' },
   { id: 'international', nameAr: 'الاحترافي الدولي', nameEn: 'International Professional', descAr: 'ترويسة بطاقية حديثة وشبكة سفلية منظمة للتقديم الدولي.', descEn: 'Global standard card header with balanced two-column footer grid.', layout: 'global-card', tag: 'Global' },
 ];
+
+
+const ATS_TEMPLATES = [
+  {
+    id: 'ats-harvard',
+    nameAr: 'قالب هارفارد (Harvard ATS)',
+    nameEn: 'Harvard Standard ATS',
+    descAr: 'المعيار الذهبي العالمي المعتمد في الجامعات والشركات الكبرى (عمود واحد، ترويسة متوسطة، خطوط فاصلة دقيقة).',
+    descEn: 'The global gold standard: centered header, crisp horizontal dividers, pure single-column.',
+    badge: 'GOLD STANDARD'
+  },
+  {
+    id: 'ats-executive',
+    nameAr: 'التنفيذي القياسي (Executive ATS)',
+    nameEn: 'Corporate Executive ATS',
+    descAr: 'مصمم للمناصب الإدارية والبنوك والمنظمات الدولية بأسلوب منظم ومباشر يقرؤه أي نظام فرز.',
+    descEn: 'Built for management, banking, and UN/NGO roles with clean left/right aligned structure.',
+    badge: 'CORPORATE'
+  },
+  {
+    id: 'ats-tech',
+    nameAr: 'التقني والدولي (Tech / Global ATS)',
+    nameEn: 'Tech & International ATS',
+    descAr: 'يضع المهارات والمشاريع في الصدارة مباشرة بعد النبذة لرفع نسبة التطابق في الوظائف التقنية.',
+    descEn: 'Prioritizes technical skills and projects right below summary for tech & global screening.',
+    badge: 'TECH & GLOBAL'
+  }
+];
+
+const STOP_WORDS = new Set([
+  'the','and','for','with','that','this','from','your','will','have','are','you','our','not','but','all','can','who','job','role','work','team','years','experience','skills','required','preferred','about','into','their','more','than','must','able','using','such','other','both','well','also','within','across','strong','good','excellent',
+  'في','من','على','إلى','عن','مع','أو','و','ان','أن','التي','الذي','هذا','هذه','ذلك','تلك','كما','حيث','عند','بين','بعد','قبل','خلال','ضمن','عبر','حول','فوق','تحت','لدى','لدي','يكون','تكون','كان','كانت','العمل','خبرة','مهارات','مطلوب','وظيفة','فريق','سنوات','جيد','ممتاز','القدرة'
+]);
+
+function evaluateATSScore(cv, isAr) {
+  const checks = [
+    {
+      ok: Boolean(cv.personal.fullName && (cv.personal.email || cv.personal.phone)),
+      pts: 20,
+      labelAr: 'بيانات التواصل الأساسية مكتملة (الاسم + البريد/الهاتف)',
+      labelEn: 'Core contact details present (Name + Email/Phone)'
+    },
+    {
+      ok: Boolean(cv.summary.bio && cv.summary.bio.trim().length >= 40),
+      pts: 15,
+      labelAr: 'ملخص مهني واضح وغني بالكلمات المفتاحية (40 حرفًا فأكثر)',
+      labelEn: 'Clear professional summary (40+ characters)'
+    },
+    {
+      ok: cv.experience.length > 0,
+      pts: 20,
+      labelAr: 'وجود خبرات مهنية مفصّلة بأسماء الجهات والمسميات',
+      labelEn: 'Work experience entries with roles & companies'
+    },
+    {
+      ok: cv.experience.some(e => /\d+|%|\+/.test(`${e.description} ${e.achievements}`)),
+      pts: 15,
+      labelAr: 'استخدام أرقام أو نسب مئوية لقياس الإنجازات (يرفع القبول في ATS)',
+      labelEn: 'Measurable metrics/numbers in achievements (boosts ATS rank)'
+    },
+    {
+      ok: cv.education.length > 0,
+      pts: 15,
+      labelAr: 'قسم التعليم والمؤهلات الأكاديمية مكتمل',
+      labelEn: 'Education & academic qualifications included'
+    },
+    {
+      ok: cv.skills.length >= 4,
+      pts: 15,
+      labelAr: 'إدراج 4 مهارات تخصصية على الأقل لتسهيل الفرز الآلي',
+      labelEn: 'At least 4 targeted skills listed for keyword scanning'
+    }
+  ];
+  const score = checks.reduce((acc, c) => acc + (c.ok ? c.pts : 0), 0);
+  return { score, checks };
+}
+
+function matchJobDescription(cv, jobDesc) {
+  if (!jobDesc || !jobDesc.trim()) return null;
+  const cvText = [
+    cv.personal.jobTitle,
+    cv.summary.bio,
+    cv.summary.objective,
+    cv.summary.specialty,
+    ...cv.experience.map(e => `${e.role} ${e.company} ${e.description} ${e.achievements}`),
+    ...cv.education.map(e => `${e.degree} ${e.major} ${e.institution}`),
+    ...cv.skills.map(s => s.name),
+    ...cv.projects.map(p => `${p.name} ${p.tech} ${p.description}`),
+    ...cv.certifications.map(c => `${c.title} ${c.issuer}`),
+  ].join(' ').toLowerCase();
+
+  const words = jobDesc
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}#+.]+/gu, ' ')
+    .split(/\s+/)
+    .filter(w => w.length >= 3 && !STOP_WORDS.has(w) && !/^\d+$/.test(w));
+
+  const freq = {};
+  words.forEach(w => { freq[w] = (freq[w] || 0) + 1; });
+  const topKeywords = Object.entries(freq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 18)
+    .map(([w]) => w);
+
+  if (topKeywords.length === 0) return null;
+
+  const matched = topKeywords.filter(k => cvText.includes(k));
+  const missing = topKeywords.filter(k => !cvText.includes(k));
+  const percent = Math.round((matched.length / topKeywords.length) * 100);
+  return { percent, matched, missing };
+}
 
 const EMPTY_CV = {
   personal: {
@@ -388,6 +499,8 @@ export default function App() {
   const [showClearModal, setShowClearModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [pasteText, setPasteText] = useState('');
+  const [atsTemplate, setAtsTemplate] = useState('ats-harvard');
+  const [jobDesc, setJobDesc] = useState('');
   const [toast, setToast] = useState('');
 
   const isAr = lang === 'ar';
@@ -410,6 +523,10 @@ export default function App() {
     if (cv.languages.length > 0 || cv.projects.length > 0 || cv.certifications.length > 0) score += 5;
     return Math.min(100, score);
   }, [cv]);
+
+
+  const atsEval = useMemo(() => evaluateATSScore(cv, isAr), [cv, isAr]);
+  const jdMatch = useMemo(() => matchJobDescription(cv, jobDesc), [cv, jobDesc]);
 
   const t = useMemo(() => ({
     navHome: isAr ? 'الرئيسية' : 'Home',
@@ -650,7 +767,8 @@ export default function App() {
   const goNextSection = () => { if (activeIdx < sections.length - 1) setActiveSection(sections[activeIdx + 1].id); };
 
   const renderCVDocument = (data = cv, tplId = selectedTemplate, mini = false) => {
-    const accent = tplId === 'ats' ? '#0B1020' : tplId === 'medical' ? '#0F766E' : design.accentColor;
+    const isAtsTpl = tplId === 'ats' || tplId.startsWith('ats-');
+    const accent = isAtsTpl ? '#000000' : tplId === 'medical' ? '#0F766E' : design.accentColor;
     const fontClass = design.fontFamily === 'IBM Plex Sans Arabic' ? 'font-ibm' : design.fontFamily === 'Inter' ? 'font-inter' : 'font-cairo';
     const padClass = design.margins === 'compact' ? 'p-5' : design.margins === 'wide' ? 'p-10' : 'p-7';
     const gapClass = design.spacing === 'compact' ? 'space-y-3' : design.spacing === 'relaxed' ? 'space-y-6' : 'space-y-4';
@@ -661,14 +779,14 @@ export default function App() {
     const photoSizeCls = design.photoSize === 'sm' ? 'w-16 h-16' : design.photoSize === 'lg' ? 'w-28 h-28' : 'w-[88px] h-[88px]';
 
     const headingCls =
-      design.headingStyle === 'pill' && tplId !== 'ats'
+      design.headingStyle === 'pill' && !isAtsTpl
         ? 'inline-block px-3 py-0.5 rounded-full text-white font-bold text-xs uppercase tracking-wider mb-2'
-        : design.headingStyle === 'left-bar' && tplId !== 'ats'
+        : design.headingStyle === 'left-bar' && !isAtsTpl
         ? `font-bold text-sm uppercase tracking-wide mb-2 ${isAr ? 'border-r-4 pr-2' : 'border-l-4 pl-2'}`
         : 'font-bold text-sm uppercase tracking-wide pb-1 mb-2 border-b-2';
 
     const headingStyleObj =
-      design.headingStyle === 'pill' && tplId !== 'ats'
+      design.headingStyle === 'pill' && !isAtsTpl
         ? { backgroundColor: accent }
         : { color: accent, borderColor: accent };
 
@@ -861,7 +979,39 @@ export default function App() {
     ].filter(Boolean);
 
     const orderedIds = getOrderedSectionIds();
-    const showPhotoHere = design.showPhoto && data.personal.photo && tplId !== 'ats';
+    const showPhotoHere = design.showPhoto && data.personal.photo && !isAtsTpl;
+
+    
+    // PURE ELITE ATS TEMPLATES (Single-column, zero photo, 100% ATS-scanner compliant)
+    if (tplId === 'ats-harvard' || tplId === 'ats-executive' || tplId === 'ats-tech') {
+      const isCentered = tplId === 'ats-harvard';
+      const atsOrder = tplId === 'ats-tech'
+        ? ['summary', 'skills', 'projects', 'experience', 'education', 'certifications', 'languages', 'volunteering', 'references']
+        : ['summary', 'experience', 'education', 'skills', 'projects', 'certifications', 'languages', 'volunteering', 'references'];
+      const customIds = (data.customSections || []).map(c => c.id);
+      const finalAtsIds = [...atsOrder, ...customIds];
+
+      return (
+        <div id={mini ? undefined : 'cv-a4-preview'} dir={dir} className={`bg-white text-black ${fontClass} ${textSize} w-full min-h-[297mm] shadow-xl border border-slate-200 overflow-hidden print-container p-8 space-y-4`}>
+          <div className={`${isCentered ? 'text-center' : 'text-start'} pb-3 border-b-2 border-black`}>
+            <h1 className="text-2xl font-extrabold uppercase tracking-wide text-black">
+              {data.personal.fullName || (isAr ? 'الاسم الكامل' : 'YOUR FULL NAME')}
+            </h1>
+            {data.personal.jobTitle && (
+              <p className="text-sm font-bold text-slate-800 mt-0.5">{data.personal.jobTitle}</p>
+            )}
+            {contactItems.length > 0 && (
+              <div className={`flex flex-wrap ${isCentered ? 'justify-center' : 'justify-start'} gap-x-2 gap-y-0.5 mt-1.5 text-xs text-slate-800`}>
+                {contactItems.map((item, idx) => <span key={idx}>{idx > 0 ? ' | ' : ''}{item}</span>)}
+              </div>
+            )}
+          </div>
+          <div className="space-y-4">
+            {finalAtsIds.map(id => renderSectionBlock(id))}
+          </div>
+        </div>
+      );
+    }
 
     if (tplId === 'creative') {
       const sideIds = ['skills', 'languages', 'certifications', 'references'];
@@ -1015,6 +1165,9 @@ export default function App() {
           <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-700">
             <button onClick={() => setView('landing')} className="hover:text-[#2563EB] transition">{t.navHome}</button>
             <button onClick={() => setView('templates')} className="hover:text-[#2563EB] transition">{t.navTemplates}</button>
+            <button onClick={() => { setSelectedTemplate(atsTemplate); setView('ats'); }} className={`px-3 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition ${view === 'ats' ? 'bg-[#0B1020] text-white shadow' : 'bg-[#0B1020]/5 text-[#0B1020] border border-[#0B1020]/20 hover:bg-[#0B1020] hover:text-white'}`}>
+              <ShieldCheck className="w-4 h-4 text-[#2563EB]" /> {isAr ? 'بوابة ATS الاحترافية' : 'ATS Pro Studio'}
+            </button>
             <button onClick={() => setShowImportModal(true)} className="hover:text-[#2563EB] transition flex items-center gap-1"><FileUp className="w-4 h-4" />{t.ctaImport}</button>
             <button onClick={() => { setView('landing'); setTimeout(() => document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' }), 50); }} className="hover:text-[#2563EB] transition">{t.navFaq}</button>
           </nav>
@@ -1037,6 +1190,7 @@ export default function App() {
           <div className="md:hidden bg-white border-t border-slate-200 px-4 py-3 space-y-2 text-sm font-semibold">
             <button onClick={() => { setView('landing'); setMobileMenu(false); }} className="block w-full text-start py-1.5">{t.navHome}</button>
             <button onClick={() => { setView('templates'); setMobileMenu(false); }} className="block w-full text-start py-1.5">{t.navTemplates}</button>
+            <button onClick={() => { setSelectedTemplate(atsTemplate); setView('ats'); setMobileMenu(false); }} className="block w-full text-start py-1.5 font-extrabold text-[#0B1020] flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-[#2563EB]" /> {isAr ? 'بوابة ATS الاحترافية' : 'ATS Pro Studio'}</button>
             <button onClick={() => { setShowImportModal(true); setMobileMenu(false); }} className="block w-full text-start py-1.5 text-[#7C3AED]">{t.ctaImport}</button>
             <button onClick={() => { setView('builder'); setMobileMenu(false); }} className="block w-full text-start py-1.5 text-[#2563EB]">{t.startNow}</button>
           </div>
@@ -1083,6 +1237,36 @@ export default function App() {
                 <TemplateThumbnail>
                   {renderCVDocument(isAr ? SAMPLE_CV_AR : SAMPLE_CV_EN, 'executive', true)}
                 </TemplateThumbnail>
+              </div>
+            </div>
+          </section>
+
+          
+          {/* VIP ATS Pro Studio Banner */}
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-12">
+            <div className="rounded-3xl bg-gradient-to-br from-[#0B1020] via-[#111936] to-[#1E1B4B] text-white p-6 sm:p-10 shadow-2xl border border-white/10 grid lg:grid-cols-12 gap-6 items-center">
+              <div className="lg:col-span-8 space-y-3">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-blue-300 text-xs font-bold">
+                  <ShieldCheck className="w-4 h-4" />
+                  {isAr ? 'قسم نخبوي خاص للمنظمات الدولية والشركات الكبرى' : 'ELITE PORTAL FOR GLOBAL COMPANIES & NGOs'}
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-extrabold">
+                  {isAr ? 'بوابة ATS الاحترافية — اجتَز أنظمة الفرز الآلي بثقة' : 'ATS Pro Studio — Pass Automated Screening With Confidence'}
+                </h2>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
+                  {isAr
+                    ? 'قسم مستقل ومخصص لمن يتقدمون للشركات العالمية والبنوك والمنظمات: يضم 3 قوالب ATS نقية 100% (منها قالب هارفارد)، فاحص جودة فوري من 100%، ومُطابِق الوصف الوظيفي لاكتشاف الكلمات المفتاحية المفقودة.'
+                    : 'A dedicated portal with 3 pure ATS templates (including Harvard Standard), a live 0-100% ATS score checker, and a Job Description Keyword Matcher.'}
+                </p>
+              </div>
+              <div className="lg:col-span-4 flex lg:justify-end">
+                <button
+                  onClick={() => { setSelectedTemplate(atsTemplate); setView('ats'); }}
+                  className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-gradient-to-r from-[#2563EB] to-[#7C3AED] text-white font-extrabold text-sm shadow-xl hover:opacity-95 transition flex items-center justify-center gap-2"
+                >
+                  <Target className="w-5 h-5" />
+                  {isAr ? 'ادخل بوابة ATS الاحترافية' : 'Enter ATS Pro Studio'}
+                </button>
               </div>
             </div>
           </section>
@@ -1649,6 +1833,181 @@ export default function App() {
                 {renderCVDocument()}
               </ResponsiveA4Frame>
             </section>
+          </div>
+        </main>
+      )}
+
+      
+      {/* ATS PRO STUDIO (DEDICATED ELITE PORTAL) */}
+      {view === 'ats' && (
+        <main className="flex-1 max-w-7xl mx-auto px-3 sm:px-6 py-6 w-full space-y-6 print-main">
+          {/* Elite Portal Header */}
+          <div className="rounded-3xl bg-gradient-to-r from-[#0B1020] via-[#131C3A] to-[#1E1B4B] text-white p-5 sm:p-7 shadow-xl border border-white/10 flex flex-wrap items-center justify-between gap-4 no-print">
+            <div className="space-y-1.5">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-[11px] font-bold">
+                <ShieldCheck className="w-3.5 h-3.5" /> ATS PRO STUDIO • 100% PARSER COMPLIANT
+              </div>
+              <h1 className="text-xl sm:text-3xl font-extrabold">
+                {isAr ? 'بوابة ATS الاحترافية' : 'ATS Pro Studio'}
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
+                {isAr
+                  ? 'بيئة عمل نخبوية خالية من الصور والأعمدة المعقدة، مصممة خصيصًا لاجتياز أنظمة الفرز الآلي في الشركات العالمية والمنظمات الدولية.'
+                  : 'An elite, single-column, photo-free workspace engineered to pass Applicant Tracking Systems at top companies.'}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => setShowImportModal(true)} className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1.5">
+                <FileUp className="w-4 h-4" /> {isAr ? 'استيراد سيرة' : 'Import CV'}
+              </button>
+              <button onClick={() => { setCv(isAr ? SAMPLE_CV_AR : SAMPLE_CV_EN); notify(isAr ? 'تمت تعبئة بيانات تجريبية' : 'Sample loaded'); }} className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold">
+                {t.loadSample}
+              </button>
+              <button onClick={() => { setSelectedTemplate(atsTemplate); setView('builder'); }} className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#7C3AED] text-white text-xs font-bold shadow flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4" /> {isAr ? 'تعديل بيانات السيرة' : 'Edit CV Data'}
+              </button>
+            </div>
+          </div>
+
+          {/* 3 Pure ATS Templates Selector */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 no-print">
+            {ATS_TEMPLATES.map(tpl => (
+              <button
+                key={tpl.id}
+                onClick={() => { setAtsTemplate(tpl.id); setSelectedTemplate(tpl.id); }}
+                className={`text-start p-4 rounded-2xl border-2 transition bg-white ${atsTemplate === tpl.id ? 'border-[#2563EB] shadow-lg ring-2 ring-[#2563EB]/20' : 'border-slate-200 hover:border-slate-300'}`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-[#0B1020] text-white">{tpl.badge}</span>
+                  {atsTemplate === tpl.id && <CheckCircle2 className="w-5 h-5 text-[#2563EB]" />}
+                </div>
+                <div className="font-extrabold text-sm sm:text-base text-[#0B1020]">{isAr ? tpl.nameAr : tpl.nameEn}</div>
+                <p className="text-xs text-slate-600 mt-1">{isAr ? tpl.descAr : tpl.descEn}</p>
+              </button>
+            ))}
+          </div>
+
+          {/* Main Split: Left Tools (Score + JD Matcher) | Right Live Pure ATS A4 Preview */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start print-main">
+            {/* Left Column: ATS Score + Job Matcher */}
+            <div className="lg:col-span-5 space-y-5 no-print">
+              {/* Live ATS Score Card */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-extrabold text-base flex items-center gap-2">
+                    <Award className="w-5 h-5 text-[#2563EB]" />
+                    {isAr ? 'فاحص جودة ATS الفوري' : 'Live ATS Score Checker'}
+                  </h2>
+                  <span className={`text-lg font-extrabold px-3 py-1 rounded-xl ${atsEval.score >= 80 ? 'bg-emerald-50 text-emerald-700' : atsEval.score >= 50 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>
+                    {atsEval.score}%
+                  </span>
+                </div>
+
+                <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-500 ${atsEval.score >= 80 ? 'bg-emerald-500' : atsEval.score >= 50 ? 'bg-amber-500' : 'bg-red-500'}`}
+                    style={{ width: `${atsEval.score}%` }}
+                  />
+                </div>
+
+                <ul className="space-y-2 text-xs">
+                  {atsEval.checks.map((chk, idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      {chk.ok ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                      )}
+                      <span className={chk.ok ? 'text-slate-700' : 'text-slate-900 font-semibold'}>
+                        {isAr ? chk.labelAr : chk.labelEn}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Job Description Keyword Matcher */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
+                <h2 className="font-extrabold text-base flex items-center gap-2">
+                  <SearchCheck className="w-5 h-5 text-[#7C3AED]" />
+                  {isAr ? 'مُطابِق الوصف الوظيفي (Keywords)' : 'Job Description Keyword Matcher'}
+                </h2>
+                <p className="text-xs text-slate-600">
+                  {isAr
+                    ? 'الصق نص الإعلان الوظيفي هنا لنقارن سيرتك معه ونستخرج الكلمات المفتاحية المفقودة (داخل متصفحك فقط).'
+                    : 'Paste the job description here to see your match score and missing keywords (processed locally).'}
+                </p>
+                <textarea
+                  rows={4}
+                  className="w-full border rounded-xl p-3 text-xs"
+                  placeholder={isAr ? 'الصق متطلبات الوظيفة أو الإعلان الوظيفي هنا...' : 'Paste job requirements here...'}
+                  value={jobDesc}
+                  onChange={e => setJobDesc(e.target.value)}
+                />
+
+                {jdMatch && (
+                  <div className="space-y-3 pt-2 border-t border-slate-100">
+                    <div className="flex items-center justify-between text-xs font-bold">
+                      <span>{isAr ? 'نسبة تطابق الكلمات المفتاحية:' : 'Keyword Match Rate:'}</span>
+                      <span className="text-[#2563EB] text-sm font-extrabold">{jdMatch.percent}%</span>
+                    </div>
+
+                    {jdMatch.matched.length > 0 && (
+                      <div>
+                        <div className="text-[11px] font-bold text-emerald-700 mb-1.5">{isAr ? 'كلمات موجودة في سيرتك:' : 'Matched Keywords:'}</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {jdMatch.matched.map(k => (
+                            <span key={k} className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-semibold">✓ {k}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {jdMatch.missing.length > 0 && (
+                      <div>
+                        <div className="text-[11px] font-bold text-amber-700 mb-1.5">{isAr ? 'كلمات مفقودة (اضغط لإضافتها لمهاراتك):' : 'Missing Keywords (Click to add to Skills):'}</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {jdMatch.missing.map(k => (
+                            <button
+                              key={k}
+                              onClick={() => {
+                                addItem('skills', { name: k, category: isAr ? 'تقنية' : 'Technical', level: '' });
+                                notify(isAr ? `تمت إضافة "${k}" إلى مهاراتك` : `Added "${k}" to Skills`);
+                              }}
+                              className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 text-[11px] font-semibold transition"
+                            >
+                              + {k}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Column: Live Pure ATS A4 Preview + Direct Export */}
+            <div className="lg:col-span-7 space-y-3 print-main">
+              <div className="bg-white rounded-2xl border border-slate-200 p-3 flex flex-wrap items-center justify-between gap-2 no-print">
+                <span className="text-xs font-extrabold text-[#0B1020] flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  {isAr ? 'معاينة ATS النقية (A4)' : 'Pure ATS A4 Preview'}
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={handleExportPDF} className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#2563EB] to-[#7C3AED] text-white text-xs font-bold flex items-center gap-1.5 shadow">
+                    <Printer className="w-3.5 h-3.5" /> {isAr ? 'تنزيل ATS PDF' : 'Export ATS PDF'}
+                  </button>
+                  <button onClick={handleExportWord} className="px-4 py-2 rounded-xl bg-[#0B1020] text-white text-xs font-bold flex items-center gap-1.5">
+                    <FileDown className="w-3.5 h-3.5" /> {isAr ? 'تنزيل ATS Word' : 'Export ATS Word'}
+                  </button>
+                </div>
+              </div>
+
+              <ResponsiveA4Frame zoomMultiplier={1} isPrintable={true}>
+                {renderCVDocument(cv, atsTemplate, false)}
+              </ResponsiveA4Frame>
+            </div>
           </div>
         </main>
       )}

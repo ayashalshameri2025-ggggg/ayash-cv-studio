@@ -10,7 +10,6 @@
   }
 }
 
-/* Hide scrollbars cleanly for horizontal pill bars on mobile */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
