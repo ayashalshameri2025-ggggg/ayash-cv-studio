@@ -295,9 +295,89 @@ const escapeHtml = (str = '') =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
-// Smart client-side CV text parser v2 (supports Arabic & English, multi-entries, and auto-creates Custom Sections for extra headings)
+// Dynamic browser-only script loader (100% client-side, zero server uploads)
+function loadExternalScript(src, globalCheck) {
+  return new Promise((resolve, reject) => {
+    if (globalCheck()) return resolve();
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) {
+      existing.addEventListener('load', () => resolve());
+      existing.addEventListener('error', () => reject(new Error('Script load failed')));
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Script load failed'));
+    document.head.appendChild(script);
+  });
+}
+
+// Extract text from PDF file 100% inside the browser using PDF.js
+async function extractTextFromPDF(file) {
+  await loadExternalScript(
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+    () => Boolean(window.pdfjsLib)
+  );
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const allLines = [];
+
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    let currentLine = '';
+    let lastY = null;
+
+    content.items.forEach(item => {
+      const str = item.str || '';
+      const y = item.transform ? Math.round(item.transform[5]) : null;
+      if (lastY !== null && y !== null && Math.abs(y - lastY) > 6) {
+        if (currentLine.trim()) allLines.push(currentLine.trim());
+        currentLine = str;
+      } else {
+        currentLine += (currentLine && str && !currentLine.endsWith(' ') && !str.startsWith(' ') ? ' ' : '') + str;
+      }
+      if (y !== null) lastY = y;
+    });
+    if (currentLine.trim()) allLines.push(currentLine.trim());
+  }
+  return allLines.join('\n');
+}
+
+// Extract text from Word (.docx) file 100% inside the browser using JSZip + DOMParser
+async function extractTextFromDOCX(file) {
+  await loadExternalScript(
+    'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
+    () => Boolean(window.JSZip)
+  );
+  const arrayBuffer = await file.arrayBuffer();
+  const zip = await window.JSZip.loadAsync(arrayBuffer);
+  const docXmlFile = zip.file('word/document.xml');
+  if (!docXmlFile) throw new Error('Invalid DOCX');
+
+  const xmlText = await docXmlFile.async('string');
+  const parser = new DOMParser();
+  const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
+  const paragraphs = Array.from(xmlDoc.getElementsByTagName('w:p'));
+
+  const lines = paragraphs
+    .map(p => {
+      const texts = Array.from(p.getElementsByTagName('w:t')).map(t => t.textContent || '');
+      return texts.join('').trim();
+    })
+    .filter(Boolean);
+
+  return lines.join('\n');
+}
+
+// Smart client-side CV text parser v3 (handles Arabic/English ordinals, inline bullets, auto-routes courses/skills/experience, and creates Custom Sections for extra data)
 function parseRawCVText(rawText, isAr) {
-  const clean = rawText
+  let clean = rawText
     .replace(/<style[\s\S]*?<\/style>/gi, '\n')
     .replace(/<script[\s\S]*?<\/script>/gi, '\n')
     .replace(/<br\s*\/?>/gi, '\n')
@@ -307,97 +387,123 @@ function parseRawCVText(rawText, isAr) {
     .replace(/&amp;/gi, '&')
     .replace(/\r/g, '');
 
-  const rawLines = clean.split('\n').map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  // 1. Break BEFORE any Arabic ordinal section prefix (أولاً:, ثانياً:, ثالثاً:, ...)
+  clean = clean.replace(
+    /(?:^|\s)((?:أول[ااً]|ثاني[ااً]|ثالث[ااً]|رابع[ااً]|خامس[ااً]|سادس[ااً]|سابع[ااً]|ثامن[ااً]|تاسع[ااً]|عاشر[ااً])\s*[:：\-])/g,
+    '\n###ORD###$1'
+  );
+
+  // 2. Break inline bullet dashes (" - ") and numbered list items (" 1. ", " 2. ") onto separate lines
+  clean = clean
+    .replace(/\s+[-•▪]\s+/g, '\n- ')
+    .replace(/\s+(\d{1,2})\s*[.)\-]\s+(?=[\u0600-\u06FFa-zA-Z])/g, '\n$1. ');
+
+  const isPlaceholder = (val) => {
+    const v = (val || '').replace(/[\s._\-…ـ]+/g, '');
+    return v.length === 0;
+  };
+
+  const docTitleRx = /^(?:السيرة\s*الذاتية(?:\s*\(?\s*cv\s*\)?)?|cv|curriculum\s*vitae|resume)$/i;
+
+  const standardHeadings = [
+    { key: 'personal', rx: /^(?:البيانات\s*الشخصية|المعلومات\s*الشخصية|بيانات\s*التواصل|معلومات\s*التواصل|التواصل|الاتصال|personal\s*info(?:rmation)?|contact\s*info(?:rmation)?|contact\s*details|contact)/i },
+    { key: 'objective', rx: /^(?:الهدف\s*الوظيفي|الهدف\s*المهني|الأهداف\s*المهنية|الأهداف|career\s*objective|objective)/i },
+    { key: 'summary', rx: /^(?:النبذة|نبذة|النبذة\s*الشخصية|النبذة\s*المهنية|ملخص|الملخص|الملخص\s*المهني|عنّي|عني|summary|professional\s*summary|about|about\s*me|profile)/i },
+    { key: 'experience', rx: /^(?:الخبرات\s*العملية\s*والمهنية|الخبرات\s*المهنية\s*والعملية|الخبرات\s*العملية|الخبرات\s*المهنية|التاريخ\s*الوظيفي|الخبرات|الخبرة|خبرات|work\s*experience|professional\s*experience|career\s*history|experience|employment)/i },
+    { key: 'education', rx: /^(?:المؤهلات\s*العلمية\s*والعسكرية|المؤهلات\s*العلمية|المؤهلات\s*الأكاديمية|التحصيل\s*العلمي|التعليم|المؤهلات|الدراسة|academic\s*background|qualifications|education)/i },
+    { key: 'skills', rx: /^(?:المهارات\s*والقدرات|القدرات\s*والمهارات|المهارات\s*التقنية|المهارات\s*الشخصية|المهارات\s*الإدارية|المهارات|مهارات|القدرات|الكفاءات|technical\s*skills|soft\s*skills|core\s*skills|competencies|skills)/i },
+    { key: 'projects', rx: /^(?:أبرز\s*المشاريع|المشاريع|مشاريع|الأعمال|key\s*projects|projects|portfolio)/i },
+    { key: 'certifications', rx: /^(?:الدورات\s*والشهادات|الشهادات\s*والدورات|الدورات\s*التدريبية|الدورات|الشهادات|التدريب|certifications|certificates|courses|training)/i },
+    { key: 'languages', rx: /^(?:اللغات|لغات|languages)/i },
+    { key: 'volunteering', rx: /^(?:الأعمال\s*التطوعية|العمل\s*التطوعي|الأنشطة\s*التطوعية|التطوع|الأنشطة|volunteering|volunteer|activities|community)/i },
+    { key: 'references', rx: /^(?:المراجع|المعرفون|المعرّفون|references|referees)/i },
+  ];
+
+  // Expand lines so an ordinal heading + inline body text gets split cleanly right after the heading
+  const expandedLines = [];
+  clean.split('\n').forEach(rawL => {
+    let l = rawL.replace(/\s+/g, ' ').trim();
+    if (!l) return;
+
+    if (l.startsWith('###ORD###')) {
+      l = l.replace('###ORD###', '').trim();
+      const stripped = l.replace(/^(?:أول[ااً]|ثاني[ااً]|ثالث[ااً]|رابع[ااً]|خامس[ااً]|سادس[ااً]|سابع[ااً]|ثامن[ااً]|تاسع[ااً]|عاشر[ااً])\s*[:：\-]\s*/i, '').trim();
+      let matchedHead = null;
+      for (const h of standardHeadings) {
+        const m = stripped.match(h.rx);
+        if (m) {
+          const headPart = m[0].trim();
+          const restPart = stripped.slice(m[0].length).replace(/^[:：\-–—\s]+/, '').trim();
+          matchedHead = { headPart, restPart };
+          break;
+        }
+      }
+      if (matchedHead) {
+        expandedLines.push(`@@SEC@@${matchedHead.headPart}`);
+        if (matchedHead.restPart) expandedLines.push(matchedHead.restPart);
+      } else {
+        const colonIdx = stripped.indexOf(':');
+        if (colonIdx > 1 && colonIdx < 40) {
+          expandedLines.push(`@@SEC@@${stripped.slice(0, colonIdx).trim()}`);
+          const rest = stripped.slice(colonIdx + 1).trim();
+          if (rest) expandedLines.push(rest);
+        } else {
+          expandedLines.push(`@@SEC@@${stripped}`);
+        }
+      }
+      return;
+    }
+
+    expandedLines.push(l);
+  });
+
   const parsed = JSON.parse(JSON.stringify(EMPTY_CV));
   const newCustomSectionDefs = [];
-  if (rawLines.length === 0) return { cvData: parsed, newCustomSectionDefs };
+  if (expandedLines.length === 0) return { cvData: parsed, newCustomSectionDefs };
 
-  // 1. Extract contact details via regex
+  // Global regex extraction for obvious contact links
   const emailMatch = clean.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
   const phoneMatch = clean.match(/(?:\+?\d[\d\s\-()]{7,16}\d)/);
   const linkedinMatch = clean.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/[^\s,]+/i);
   const githubMatch = clean.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/[^\s,]+/i);
-  const webMatch = clean.match(/(?:https?:\/\/)?(?:www\.)?(?!linkedin\.com|github\.com)[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s,]*)?/i);
 
   if (emailMatch) parsed.personal.email = emailMatch[0];
   if (phoneMatch) parsed.personal.phone = phoneMatch[0].trim();
   if (linkedinMatch) parsed.personal.linkedin = linkedinMatch[0];
   if (githubMatch) parsed.personal.github = githubMatch[0];
-  if (webMatch && !webMatch[0].includes('@')) parsed.personal.website = webMatch[0];
 
-  // 2. Check inline key:value labels for personal info
-  const consumedIndices = new Set();
-  rawLines.forEach((line, idx) => {
-    const mName = line.match(/^(?:الاسم(?:\s+الكامل)?|name|full\s*name)\s*[:：\-]\s*(.+)$/i);
-    if (mName) { parsed.personal.fullName = mName[1].trim(); consumedIndices.add(idx); return; }
-
-    const mTitle = line.match(/^(?:المسمى\s*الوظيفي|الوظيفة|التخصص|job\s*title|title|position)\s*[:：\-]\s*(.+)$/i);
-    if (mTitle) { parsed.personal.jobTitle = mTitle[1].trim(); consumedIndices.add(idx); return; }
-
-    const mLoc = line.match(/^(?:الدولة|المدينة|الموقع|السكن|location|city|country)\s*[:：\-]\s*(.+)$/i);
-    if (mLoc && !mLoc[1].includes('http')) { parsed.personal.location = mLoc[1].trim(); consumedIndices.add(idx); return; }
-
-    const mAddr = line.match(/^(?:العنوان|address)\s*[:：\-]\s*(.+)$/i);
-    if (mAddr) { parsed.personal.address = mAddr[1].trim(); consumedIndices.add(idx); return; }
-  });
-
-  // Fallback for Name & Job Title from first 2 clean lines
-  const headerCandidates = rawLines.filter((l, i) =>
-    !consumedIndices.has(i) && !l.includes('@') && !l.match(/^\+?\d[\d\s\-()]{6,}$/) && !l.includes('http') && l.length < 75
-  );
-  if (!parsed.personal.fullName && headerCandidates[0]) parsed.personal.fullName = headerCandidates[0];
-  if (!parsed.personal.jobTitle && headerCandidates[1]) parsed.personal.jobTitle = headerCandidates[1];
-
-  // 3. Standard section heading matchers (Arabic & English)
-  const standardHeadings = [
-    { key: 'summary', rx: /^(?:النبذة|نبذة|ملخص|الملخص|نبذة\s*شخصية|ملخص\s*مهني|عنّي|عني|الأهداف\s*المهنية|summary|professional\s*summary|about|about\s*me|profile|objective)/i },
-    { key: 'experience', rx: /^(?:الخبرات|الخبرة|خبرات|الخبرات\s*المهنية|الخبرات\s*العملية|التاريخ\s*الوظيفي|experience|work\s*experience|employment|professional\s*experience|career\s*history)/i },
-    { key: 'education', rx: /^(?:التعليم|المؤهلات|المؤهلات\s*العلمية|الدراسة|التحصيل\s*العلمي|education|academic\s*background|qualifications)/i },
-    { key: 'skills', rx: /^(?:المهارات|مهارات|المهارات\s*التقنية|المهارات\s*الشخصية|المهارات\s*الإدارية|الكفاءات|skills|technical\s*skills|soft\s*skills|competencies|core\s*skills)/i },
-    { key: 'projects', rx: /^(?:المشاريع|مشاريع|أبرز\s*المشاريع|الأعمال|projects|key\s*projects|portfolio)/i },
-    { key: 'certifications', rx: /^(?:الدورات|الشهادات|الدورات\s*التدريبية|الدورات\s*والشهادات|التدريب|certifications|certificates|courses|training)/i },
-    { key: 'languages', rx: /^(?:اللغات|لغات|languages)/i },
-    { key: 'volunteering', rx: /^(?:التطوع|الأعمال\s*التطوعية|الأنشطة|العمل\s*التطوعي|الأنشطة\s*التطوعية|volunteering|volunteer|activities|community)/i },
-    { key: 'references', rx: /^(?:المراجع|المعرفون|المعرّفون|references|referees)/i },
-  ];
-
-  // Extra headings that are NOT in standard 10 -> auto-create Custom Section!
-  const extraHeadingRx = /^(?:الجوائز|التكريمات|الإنجازات|الأبحاث|المنشورات|العضويات|الهوايات|الاهتمامات|المعلومات\s*الإضافية|البيانات\s*الشخصية|رخصة\s*القيادة|awards|honors|publications|research|memberships|hobbies|interests|additional\s*info|achievements|patents)\s*[:：\-]?$/i;
-
-  const isGenericHeading = (line) => {
-    if (line.length > 42 || line.length < 3) return false;
-    if (/[.,،;؛@]/.test(line) || /\d{4}/.test(line)) return false;
-    if (extraHeadingRx.test(line)) return true;
-    // Ends with colon and is short (e.g. "الجوائز والتكريمات:")
-    if (/[:：]$/.test(line) && line.split(' ').length <= 4) return true;
-    return false;
-  };
-
-  let currentKey = 'summary';
-  let currentCustomId = null;
   const buckets = {
-    summary: [], experience: [], education: [], skills: [],
-    projects: [], certifications: [], languages: [], volunteering: [], references: []
+    personal: [], summary: [], objective: [], experience: [], education: [],
+    skills: [], projects: [], certifications: [], languages: [], volunteering: [], references: []
   };
   const customBuckets = {}; // id -> { title, lines: [] }
+  const extraPersonalLines = [];
 
-  const startIdx = rawLines.findIndex(l => l === parsed.personal.jobTitle || l === parsed.personal.fullName);
-  const bodyLines = rawLines.slice(Math.max(0, startIdx + 1));
+  let currentKey = 'personal';
+  let currentCustomId = null;
 
-  bodyLines.forEach(line => {
-    if (line === parsed.personal.fullName || line === parsed.personal.jobTitle) return;
-    const cleanHeading = line.replace(/[:：\-]+$/, '').trim();
+  const extraHeadingRx = /^(?:الجوائز|التكريمات|الإنجازات|الأبحاث|المنشورات|العضويات|الهوايات|الاهتمامات|المعلومات\s*الإضافية|رخصة\s*القيادة|awards|honors|publications|research|memberships|hobbies|interests|additional\s*info|achievements|patents)\s*[:：\-]?$/i;
 
-    const stdMatch = standardHeadings.find(h => h.rx.test(cleanHeading) && cleanHeading.length <= 42);
-    if (stdMatch) {
+  expandedLines.forEach(line => {
+    const cleanCheck = line.replace(/^@@SEC@@/, '').replace(/[:：\-]+$/, '').trim();
+    if (!cleanCheck || docTitleRx.test(cleanCheck)) return;
+
+    const isForcedSec = line.startsWith('@@SEC@@');
+    const stdMatch = standardHeadings.find(h => h.rx.test(cleanCheck) && cleanCheck.length <= 50);
+
+    if (stdMatch && (isForcedSec || cleanCheck.length <= 38)) {
       currentKey = stdMatch.key;
       currentCustomId = null;
       return;
     }
 
-    if (isGenericHeading(line)) {
+    if (
+      isForcedSec ||
+      extraHeadingRx.test(cleanCheck) ||
+      (/[:：]$/.test(line) && line.length <= 36 && !/^(?:الاسم|الجنسية|المحافظة|المديرية|العزلة|العنوان|الهاتف|رقم\s*الهاتف|البريد|المسمى|التخصص|الموقع|name|phone|email|address)/i.test(cleanCheck))
+    ) {
       const cid = `custom_${Date.now()}_${Object.keys(customBuckets).length + 1}`;
-      customBuckets[cid] = { title: cleanHeading, lines: [] };
+      customBuckets[cid] = { title: cleanCheck, lines: [] };
       currentKey = 'custom';
       currentCustomId = cid;
       return;
@@ -410,131 +516,241 @@ function parseRawCVText(rawText, isAr) {
     }
   });
 
-  // 4. Populate Summary
+  // 3. Parse Personal & Contact Info accurately
+  const addressParts = [];
+  buckets.personal.forEach(rawLine => {
+    const line = rawLine.replace(/^[-•*▪]\s*/, '').trim();
+    if (!line || docTitleRx.test(line)) return;
+
+    const kv = line.match(/^([^:：]{2,28})\s*[:：]\s*(.*)$/);
+    if (kv) {
+      const key = kv[1].trim();
+      const val = kv[2].trim();
+      if (isPlaceholder(val)) return;
+
+      if (/^(?:الاسم(?:\s+الكامل)?|name|full\s*name)$/i.test(key)) {
+        parsed.personal.fullName = val;
+      } else if (/^(?:المسمى\s*الوظيفي|الوظيفة|التخصص|job\s*title|title|position)$/i.test(key)) {
+        parsed.personal.jobTitle = val;
+      } else if (/^(?:البريد(?:\s*الإلكتروني)?|الإيميل|email|e-mail)$/i.test(key)) {
+        parsed.personal.email = val;
+      } else if (/^(?:رقم\s*الهاتف|الهاتف|الجوال|الموبايل|رقم\s*الجوال|phone|mobile|tel)$/i.test(key)) {
+        parsed.personal.phone = val;
+      } else if (/^(?:الدولة|المدينة|المحافظة|الدولة\s*والمدينة|location|city|country)$/i.test(key)) {
+        parsed.personal.location = parsed.personal.location ? `${parsed.personal.location} - ${val}` : val;
+      } else if (/^(?:العنوان|السكن|المديرية|العزلة|الحي|address|district)$/i.test(key)) {
+        addressParts.push(`${key}: ${val}`);
+      } else if (/^(?:linkedin|لينكد\s*إن)$/i.test(key)) {
+        parsed.personal.linkedin = val;
+      } else if (/^(?:github|جيت\s*هب)$/i.test(key)) {
+        parsed.personal.github = val;
+      } else if (/^(?:الموقع(?:\s*الشخصي|\s*الإلكتروني)?|website)$/i.test(key)) {
+        parsed.personal.website = val;
+      } else {
+        extraPersonalLines.push(`${key}: ${val}`);
+      }
+      return;
+    }
+
+    if (!parsed.personal.fullName && line.length < 60 && !line.includes('@')) {
+      parsed.personal.fullName = line;
+    } else if (!parsed.personal.jobTitle && line.length < 75 && !line.includes('@')) {
+      parsed.personal.jobTitle = line;
+    } else if (!isPlaceholder(line)) {
+      extraPersonalLines.push(line);
+    }
+  });
+
+  if (addressParts.length > 0) parsed.personal.address = addressParts.join(' - ');
+  if (extraPersonalLines.length > 0) {
+    const cid = `custom_${Date.now()}_personal_extra`;
+    customBuckets[cid] = { title: isAr ? 'بيانات شخصية إضافية' : 'Additional Personal Info', lines: extraPersonalLines };
+  }
+
+  // 4. Populate Summary & Objective
   if (buckets.summary.length > 0) {
-    parsed.summary.bio = buckets.summary.join(' ');
+    parsed.summary.bio = buckets.summary.map(l => l.replace(/^[-•*▪]\s*/, '')).join(' ');
+  }
+  if (buckets.objective.length > 0) {
+    parsed.summary.objective = buckets.objective.map(l => l.replace(/^[-•*▪]\s*/, '')).join(' ');
+    if (!parsed.summary.bio) {
+      parsed.summary.bio = parsed.summary.objective;
+      parsed.summary.objective = '';
+    }
   }
 
-  // 5. Populate Experience (smart multi-entry split)
-  if (buckets.experience.length > 0) {
-    const expLines = buckets.experience;
-    let currentExp = null;
-    expLines.forEach((line, i) => {
-      const hasDate = /(?:19|20)\d{2}|حتى الآن|present|current/i.test(line);
-      const isBullet = /^[-•*★▪]/.test(line);
-      if (!currentExp || (!isBullet && hasDate && currentExp.description)) {
-        if (currentExp) parsed.experience.push(currentExp);
-        currentExp = { id: Date.now() + 100 + i, role: line.replace(/^[-•*▪]\s*/, ''), company: '', location: '', start: '', end: '', description: '', achievements: '' };
-      } else if (!currentExp.company && !isBullet && line.length < 65) {
-        currentExp.company = line;
-      } else {
-        currentExp.description = currentExp.description ? `${currentExp.description}\n${line}` : line;
-      }
-    });
-    if (currentExp) parsed.experience.push(currentExp);
-  }
-
-  // 6. Populate Education
+  // 5. Populate Education & Smartly Route Courses ("دورة ...") to Certifications!
   if (buckets.education.length > 0) {
-    const eduLines = buckets.education;
-    let currentEdu = null;
-    eduLines.forEach((line, i) => {
-      const isDegree = /بكالوريوس|ماجستير|دكتوراه|دبلوم|ثانوية|bachelor|master|phd|b\.sc|m\.sc|diploma/i.test(line);
-      if (!currentEdu || (isDegree && currentEdu.institution)) {
-        if (currentEdu) parsed.education.push(currentEdu);
-        currentEdu = { id: Date.now() + 200 + i, degree: line, institution: '', major: '', start: '', end: '', gpa: '' };
-      } else if (!currentEdu.institution) {
-        currentEdu.institution = line;
-      } else if (!currentEdu.major) {
-        currentEdu.major = line;
+    buckets.education.forEach((rawLine, i) => {
+      const line = rawLine.replace(/^[-•*▪\d.)]+\s*/, '').trim();
+      if (!line) return;
+      if (/^(?:دورة|دورات|شهادة\s*تدريبية|course|training|workshop)/i.test(line)) {
+        const parts = line.split(/[–—\-|]/).map(p => p.trim()).filter(Boolean);
+        parsed.certifications.push({
+          id: Date.now() + 550 + i,
+          title: parts[0] || line,
+          issuer: parts.slice(1).join(' - '),
+          date: '',
+          link: ''
+        });
       } else {
-        currentEdu.gpa = line;
+        const parts = line.split(/[–—\-|]/).map(p => p.trim()).filter(Boolean);
+        parsed.education.push({
+          id: Date.now() + 200 + i,
+          degree: parts[0] || line,
+          institution: parts.slice(1).join(' - '),
+          major: '',
+          start: '',
+          end: '',
+          gpa: ''
+        });
       }
     });
-    if (currentEdu) parsed.education.push(currentEdu);
   }
 
-  // 7. Populate Skills (supports comma, bullet, pipe, or line-by-line)
+  // 6. Populate Experience (Handles intro sentence + numbered/bulleted items cleanly)
+  if (buckets.experience.length > 0) {
+    buckets.experience.forEach((rawLine, i) => {
+      const line = rawLine.trim();
+      if (!line) return;
+      if (/(?:ومن\s*أبرزها|فيما\s*يلي|تشمل)\s*[:：]?$/i.test(line) || (/^(?:يمتلك|أمتلك|خبرة\s*متنوعة)/i.test(line) && /[:：]$/.test(line))) {
+        if (!parsed.summary.bio) {
+          parsed.summary.bio = line.replace(/[,،]?\s*ومن\s*أبرزها\s*[:：]?$/i, '.');
+        }
+        return;
+      }
+      const cleanItem = line.replace(/^(?:\d{1,2}\s*[.)\-]|[-•*▪])\s*/, '').trim();
+      if (!cleanItem) return;
+
+      const splitMatch = cleanItem.match(/^([^،,:–—\-]{6,55})[،,:–—\-]\s*(.+)$/);
+      if (splitMatch) {
+        parsed.experience.push({
+          id: Date.now() + 100 + i,
+          role: splitMatch[1].trim(),
+          company: '',
+          location: '',
+          start: '',
+          end: '',
+          description: splitMatch[2].trim(),
+          achievements: ''
+        });
+      } else {
+        parsed.experience.push({
+          id: Date.now() + 100 + i,
+          role: cleanItem.length > 55 ? cleanItem.slice(0, 52) + '...' : cleanItem,
+          company: '',
+          location: '',
+          start: '',
+          end: '',
+          description: cleanItem.length > 55 ? cleanItem : '',
+          achievements: ''
+        });
+      }
+    });
+  }
+
+  // 7. Populate Skills (supports full Arabic skill sentences & auto-categorizes)
   if (buckets.skills.length > 0) {
-    const rawSkills = buckets.skills
-      .join('\n')
-      .split(/[\n,،•|·▪]/)
-      .map(s => s.replace(/^[-*]\s*/, '').trim())
-      .filter(s => s.length >= 2 && s.length <= 50)
-      .slice(0, 25);
-    parsed.skills = rawSkills.map((name, idx) => ({
+    const skillItems = [];
+    buckets.skills.forEach(rawLine => {
+      const line = rawLine.replace(/^(?:\d{1,2}\s*[.)\-]|[-•*▪])\s*/, '').trim();
+      if (!line) return;
+      if (line.includes('،') && line.split('،').every(p => p.trim().length < 28)) {
+        line.split('،').forEach(s => { if (s.trim()) skillItems.push(s.trim()); });
+      } else if (line.includes(',') && line.split(',').every(p => p.trim().length < 28)) {
+        line.split(',').forEach(s => { if (s.trim()) skillItems.push(s.trim()); });
+      } else {
+        skillItems.push(line.replace(/\.$/, ''));
+      }
+    });
+    parsed.skills = skillItems.filter(s => s.length >= 2 && s.length <= 140).slice(0, 30).map((name, idx) => ({
       id: Date.now() + 300 + idx,
       name,
-      category: isAr ? 'تقنية' : 'Technical',
+      category: /حاسوب|برمجة|كمبيوتر|أوفيس|إكسل|وورد|تطبيقات|قيادة|توزيع|تسويق|react|python|office/i.test(name)
+        ? (isAr ? 'تقنية ومهنية' : 'Technical')
+        : /إشراف|إدارة|تنظيم|قيادة\s*فريق/i.test(name)
+        ? (isAr ? 'إدارية' : 'Management')
+        : (isAr ? 'شخصية' : 'Soft'),
       level: ''
     }));
   }
 
   // 8. Populate Projects
   if (buckets.projects.length > 0) {
-    parsed.projects.push({
-      id: Date.now() + 400,
-      name: buckets.projects[0].replace(/^[-•*]\s*/, ''),
-      tech: '',
-      description: buckets.projects.slice(1).join('\n'),
-      link: ''
+    buckets.projects.forEach((rawLine, idx) => {
+      const cleanItem = rawLine.replace(/^(?:\d{1,2}\s*[.)\-]|[-•*▪])\s*/, '').trim();
+      if (!cleanItem) return;
+      const parts = cleanItem.split(/[:：–—\-]/);
+      parsed.projects.push({
+        id: Date.now() + 400 + idx,
+        name: (parts[0] || cleanItem).trim(),
+        tech: '',
+        description: parts.slice(1).join(' - ').trim(),
+        link: ''
+      });
     });
   }
 
   // 9. Populate Certifications
   if (buckets.certifications.length > 0) {
-    parsed.certifications = buckets.certifications.slice(0, 12).map((line, idx) => {
-      const parts = line.replace(/^[-•*]\s*/, '').split(/[-–—|]/);
-      return {
+    buckets.certifications.forEach((rawLine, idx) => {
+      const cleanItem = rawLine.replace(/^(?:\d{1,2}\s*[.)\-]|[-•*▪])\s*/, '').trim();
+      if (!cleanItem) return;
+      const parts = cleanItem.split(/[–—\-|]/).map(p => p.trim()).filter(Boolean);
+      parsed.certifications.push({
         id: Date.now() + 500 + idx,
-        title: (parts[0] || line).trim(),
-        issuer: (parts[1] || '').trim(),
-        date: (parts[2] || '').trim(),
+        title: parts[0] || cleanItem,
+        issuer: parts[1] || '',
+        date: parts[2] || '',
         link: ''
-      };
+      });
     });
   }
 
   // 10. Populate Languages
   if (buckets.languages.length > 0) {
-    const rawLangs = buckets.languages
+    buckets.languages
       .join('\n')
       .split(/[\n,،•|·]/)
-      .map(s => s.replace(/^[-*]\s*/, '').trim())
+      .map(s => s.replace(/^[-*▪]\s*/, '').trim())
       .filter(Boolean)
-      .slice(0, 8);
-    parsed.languages = rawLangs.map((item, idx) => {
-      const parts = item.split(/[:：\-–(]/);
-      return {
-        id: Date.now() + 600 + idx,
-        name: (parts[0] || item).trim(),
-        level: (parts[1] || '').replace(/\)$/, '').trim()
-      };
-    });
+      .slice(0, 8)
+      .forEach((item, idx) => {
+        const parts = item.split(/[:：\-–(]/);
+        parsed.languages.push({
+          id: Date.now() + 600 + idx,
+          name: (parts[0] || item).trim(),
+          level: (parts[1] || '').replace(/\)$/, '').trim()
+        });
+      });
   }
 
   // 11. Populate Volunteering
   if (buckets.volunteering.length > 0) {
-    parsed.volunteering = buckets.volunteering.slice(0, 8).map((line, idx) => ({
-      id: Date.now() + 700 + idx,
-      title: line.replace(/^[-•*]\s*/, ''),
-      org: '',
-      period: '',
-      details: ''
-    }));
+    buckets.volunteering.slice(0, 10).forEach((line, idx) => {
+      parsed.volunteering.push({
+        id: Date.now() + 700 + idx,
+        title: line.replace(/^(?:\d{1,2}\s*[.)\-]|[-•*▪])\s*/, '').trim(),
+        org: '',
+        period: '',
+        details: ''
+      });
+    });
   }
 
   // 12. Populate References
   if (buckets.references.length > 0) {
-    parsed.references = buckets.references.slice(0, 6).map((line, idx) => ({
-      id: Date.now() + 800 + idx,
-      name: line.replace(/^[-•*]\s*/, ''),
-      role: '',
-      contact: ''
-    }));
+    buckets.references.slice(0, 6).forEach((line, idx) => {
+      parsed.references.push({
+        id: Date.now() + 800 + idx,
+        name: line.replace(/^(?:\d{1,2}\s*[.)\-]|[-•*▪])\s*/, '').trim(),
+        role: '',
+        contact: ''
+      });
+    });
   }
 
-  // 13. Auto-create Custom Sections for any extra data not in standard template!
+  // 13. Auto-create Custom Sections for any extra data not in standard tabs
   Object.entries(customBuckets).forEach(([cid, obj]) => {
     if (obj.lines.length > 0) {
       parsed.customSections.push({
@@ -551,6 +767,15 @@ function parseRawCVText(rawText, isAr) {
       });
     }
   });
+
+  // 14. Auto-derive Job Title if missing (from first education or experience, strictly from user data)
+  if (!parsed.personal.jobTitle) {
+    if (parsed.education[0]?.degree) {
+      parsed.personal.jobTitle = parsed.education[0].degree.replace(/^شهادة\s+/, '');
+    } else if (parsed.experience[0]?.role) {
+      parsed.personal.jobTitle = parsed.experience[0].role;
+    }
+  }
 
   return { cvData: parsed, newCustomSectionDefs };
 }
@@ -661,6 +886,7 @@ export default function App() {
   const [showClearModal, setShowClearModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [pasteText, setPasteText] = useState('');
+  const [importingFile, setImportingFile] = useState(false);
   const [atsTemplate, setAtsTemplate] = useState('ats-harvard');
   const [jobDesc, setJobDesc] = useState('');
   const [toast, setToast] = useState('');
@@ -768,54 +994,73 @@ export default function App() {
     notify(isAr ? 'تمت إزالة الصورة الشخصية' : 'Profile photo removed');
   };
 
-  // Import previous CV file (.json, .txt, .md, .doc, .html)
-  const handleImportFile = (e) => {
+  // Import previous CV file (.pdf, .docx, .doc, .html, .txt, .md, .json) 100% client-side
+  const handleImportFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const content = String(reader.result || '');
-      if (file.name.toLowerCase().endsWith('.json')) {
-        try {
-          const data = JSON.parse(content);
-          if (data.personal) {
-            const merged = { ...EMPTY_CV, ...data, personal: { ...EMPTY_CV.personal, ...data.personal }, summary: { ...EMPTY_CV.summary, ...(data.summary || {}) } };
-            setCv(merged);
-            if (Array.isArray(merged.customSections) && merged.customSections.length > 0) {
-              setSections(prev => [
-                ...prev.filter(s => !s.isCustom),
-                ...merged.customSections.map(c => ({ id: c.id, labelAr: c.title, labelEn: c.title, visible: true, isCustom: true }))
-              ]);
-            }
-            setShowImportModal(false);
-            setView('builder');
-            notify(isAr ? 'تم استيراد بيانات السيرة الذاتية بنجاح!' : 'CV data imported successfully!');
-            return;
+    e.target.value = '';
+    setImportingFile(true);
+
+    try {
+      const lowerName = file.name.toLowerCase();
+
+      if (lowerName.endsWith('.json')) {
+        const content = await file.text();
+        const data = JSON.parse(content);
+        if (data.personal) {
+          const merged = {
+            ...EMPTY_CV,
+            ...data,
+            personal: { ...EMPTY_CV.personal, ...data.personal },
+            summary: { ...EMPTY_CV.summary, ...(data.summary || {}) }
+          };
+          setCv(merged);
+          if (Array.isArray(merged.customSections) && merged.customSections.length > 0) {
+            setSections(prev => [
+              ...prev.filter(s => !s.isCustom),
+              ...merged.customSections.map(c => ({ id: c.id, labelAr: c.title, labelEn: c.title, visible: true, isCustom: true }))
+            ]);
           }
-        } catch {
-          notify(isAr ? 'ملف JSON غير صالح' : 'Invalid JSON file');
+          setShowImportModal(false);
+          setView('builder');
+          notify(isAr ? 'تم استيراد بيانات السيرة الذاتية بنجاح!' : 'CV data imported successfully!');
           return;
         }
+        throw new Error('Invalid JSON');
       }
-      // Otherwise parse text / HTML / .doc
-      const { cvData, newCustomSectionDefs } = parseRawCVText(content, isAr);
+
+      let extractedText = '';
+      if (lowerName.endsWith('.pdf')) {
+        extractedText = await extractTextFromPDF(file);
+      } else if (lowerName.endsWith('.docx')) {
+        extractedText = await extractTextFromDOCX(file);
+      } else {
+        extractedText = await file.text();
+      }
+
+      if (!extractedText || !extractedText.trim()) {
+        notify(isAr ? 'لم يتم العثور على نص قابل للقراءة داخل الملف (قد يكون PDF مصوّراً)' : 'No readable text found (PDF might be a scanned image)');
+        return;
+      }
+
+      const { cvData, newCustomSectionDefs } = parseRawCVText(extractedText, isAr);
       setCv(cvData);
-      if (newCustomSectionDefs.length > 0) {
-        setSections(prev => [
-          ...prev.filter(s => !s.isCustom),
-          ...newCustomSectionDefs
-        ]);
-      }
+      setSections(prev => [
+        ...prev.filter(s => !s.isCustom),
+        ...newCustomSectionDefs
+      ]);
       setShowImportModal(false);
       setView('builder');
       notify(
         newCustomSectionDefs.length > 0
-          ? (isAr ? `تم استيراد البيانات وإضافة ${newCustomSectionDefs.length} قسم مخصص تلقائيًا!` : `CV imported with ${newCustomSectionDefs.length} custom section(s)!`)
-          : (isAr ? 'تم استيراد البيانات وتعبئة النموذج تلقائيًا!' : 'CV imported and form filled!')
+          ? (isAr ? `تم تحليل الملف وتوزيع البيانات + إضافة ${newCustomSectionDefs.length} قسم مخصص!` : `File parsed with ${newCustomSectionDefs.length} custom section(s)!`)
+          : (isAr ? 'تم استيراد الملف وتوزيع جميع الأقسام تلقائيًا!' : 'File imported and all sections populated!')
       );
-    };
-    reader.readAsText(file);
-    e.target.value = '';
+    } catch (err) {
+      notify(isAr ? 'تعذّر قراءة هذا الملف. تأكد أنه PDF أو DOCX نصي سليم أو الصق النص بالأسفل.' : 'Could not read file. Ensure it is a valid text PDF/DOCX or paste text below.');
+    } finally {
+      setImportingFile(false);
+    }
   };
 
   const handleImportPastedText = () => {
@@ -2244,11 +2489,20 @@ export default function App() {
 
             <div className="p-4 rounded-xl bg-[#F5F7FB] border-2 border-dashed border-[#2563EB]/40 text-center space-y-2">
               <Upload className="w-7 h-7 text-[#2563EB] mx-auto" />
-              <div className="text-xs font-bold">{isAr ? 'اختر ملف سيرتك الذاتية من جهازك' : 'Choose your CV file'}</div>
-              <p className="text-[11px] text-slate-500">{isAr ? 'يدعم ملفات JSON (المحفوظة من المنصة) أو ملفات TXT / DOC / HTML' : 'Supports JSON backups, TXT, DOC (HTML), or MD files'}</p>
-              <label className="inline-block cursor-pointer px-4 py-2 rounded-xl bg-[#2563EB] text-white text-xs font-bold hover:opacity-95">
-                {isAr ? 'اختيار ملف' : 'Choose File'}
-                <input type="file" accept=".json,.txt,.md,.html,.doc" onChange={handleImportFile} className="hidden" />
+              <div className="text-xs font-bold">{isAr ? 'اختر ملف سيرتك الذاتية من جهازك (أي صيغة)' : 'Choose your CV file (Any Format)'}</div>
+              <p className="text-[11px] text-slate-500">
+                {isAr
+                  ? 'يدعم ملفات PDF و Word (.docx / .doc) و HTML و TXT و JSON — المعالجة 100% داخل متصفحك'
+                  : 'Supports PDF, Word (.docx / .doc), HTML, TXT, and JSON — 100% in-browser'}
+              </p>
+              <label className={`inline-block cursor-pointer px-4 py-2 rounded-xl bg-[#2563EB] text-white text-xs font-bold hover:opacity-95 ${importingFile ? 'opacity-60 pointer-events-none' : ''}`}>
+                {importingFile ? (isAr ? 'جاري قراءة وتحليل الملف...' : 'Reading & parsing file...') : (isAr ? 'اختيار ملف (PDF / Word / نص)' : 'Choose File (PDF / Word / Text)')}
+                <input
+                  type="file"
+                  accept=".pdf,.docx,.doc,.txt,.md,.html,.htm,.json,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/html,application/json"
+                  onChange={handleImportFile}
+                  className="hidden"
+                />
               </label>
             </div>
 
