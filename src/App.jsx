@@ -3,7 +3,7 @@ import {
   Sparkles, Shield, Download, Globe, Layout, CheckCircle2,
   ChevronRight, ChevronLeft, Plus, Trash2, Eye, Palette, ArrowUp, ArrowDown,
   RotateCcw, ZoomIn, ZoomOut, Printer, FileDown, Menu, X, ChevronDown,
-  Lock, Upload, AlertTriangle, Camera, ImageOff, Info, FileUp, FileJson, ClipboardPaste, ShieldCheck, Target, Award, SearchCheck, MessageCircle, Mail, Linkedin, ExternalLink
+  Lock, Upload, AlertTriangle, Camera, ImageOff, Info, FileUp, FileJson, ClipboardPaste, ShieldCheck, Target, Award, SearchCheck, MessageCircle, Mail, Linkedin, ExternalLink, Brain, Cpu
 } from 'lucide-react';
 
 const TEMPLATES = [
@@ -780,6 +780,177 @@ function parseRawCVText(rawText, isAr) {
   return { cvData: parsed, newCustomSectionDefs };
 }
 
+
+// ============================================================================
+// LOCAL AI SEMANTIC CLASSIFIER (100% In-Browser NLP Scoring — Zero Servers)
+// Automatically classifies unheaded or mixed lines into the right CV sections
+// ============================================================================
+function classifyLineSemantically(line) {
+  const l = line.toLowerCase();
+  const scores = {
+    education: 0,
+    certifications: 0,
+    experience: 0,
+    skills: 0,
+    languages: 0,
+    projects: 0,
+    volunteering: 0,
+    summary: 0,
+  };
+
+  // Weighted Arabic & English semantic features
+  if (/(جامعة|كلية|معهد|بكالوريوس|ماجستير|دكتوراه|دبلوم|ثانوية|تخرج|معدل|تخصص|bachelor|master|phd|university|college|b\.sc|m\.sc|gpa|degree)/i.test(l)) scores.education += 5;
+  if (/(دورة|دورات|شهادة|شهادات|ورشة|تدريب|مخيم|أكاديمية\s*حسوب|course|certificate|certification|workshop|bootcamp|udemy|coursera)/i.test(l)) scores.certifications += 5;
+  if (/(عملت|العمل\s*في|العمل\s*على|العمل\s*مشرف|موظف|مدير|منسق|مشرف|مهندس|مطور|مدرب|طبيب|محاسب|شركة|مؤسسة|أكاديمية|مستشفى|بنك|محل|مبيعات|توزيع|worked|manager|developer|engineer|coordinator|company|hospital|bank)/i.test(l)) scores.experience += 4;
+  if (/(?:19|20)\d{2}\s*[-–—]\s*(?:(?:19|20)\d{2}|حتى الآن|present|current)/i.test(l)) scores.experience += 3;
+  if (/(يجيد|إجادة|مهارة|مهارات|القدرة\s*على|استخدام\s*الحاسوب|الكمبيوتر|أوفيس|إكسل|وورد|القيادة|التواصل|العمل\s*ضمن\s*فريق|تحمل\s*ضغط|الانضباط|الالتزام|التعامل\s*مع\s*العملاء|برمجة|تصميم|react|python|javascript|excel|word|photoshop|canva|sql|leadership|teamwork)/i.test(l)) scores.skills += 5;
+  if (/(اللغة\s*العربية|اللغة\s*الإنجليزية|العربية|الإنجليزية|الفرنسية|الألمانية|اللغة\s*الأم|ممتاز\s*في\s*الإنجليزية|arabic|english|french|german|native|fluent)/i.test(l) && l.length < 45) scores.languages += 6;
+  if (/(مشروع|منصة|تطبيق|موقع\s*ويب|نظام\s*إلكتروني|تم\s*تطوير|project|platform|built\s*a|developed\s*a|github\.com)/i.test(l)) scores.projects += 4;
+  if (/(تطوع|تطوعي|مبادرة|جمعية|خيري|مجتمعي|volunteer|initiative|charity|ngo\s*volunteer)/i.test(l)) scores.volunteering += 5;
+  if (/(أسعى|أهدف|أطمح|أبحث\s*عن\s*فرصة|ملخص|متخصص\s*في|خبرة\s*عملية\s*في|seeking|passionate|dedicated|objective|looking\s*for)/i.test(l)) scores.summary += 5;
+
+  let bestKey = null;
+  let bestScore = 0;
+  for (const [k, s] of Object.entries(scores)) {
+    if (s > bestScore) {
+      bestScore = s;
+      bestKey = k;
+    }
+  }
+  return bestScore >= 4 ? bestKey : null;
+}
+
+// Enhanced AI Wrapper around parseRawCVText: runs structural parsing + semantic rescue for unheaded lines
+function smartLocalAIParse(rawText, isAr) {
+  const result = parseRawCVText(rawText, isAr);
+  const { cvData } = result;
+
+  // If the text had NO headings and everything fell into summary.bio, run sentence-level Semantic AI classification!
+  const hasOtherData =
+    cvData.experience.length > 0 ||
+    cvData.education.length > 0 ||
+    cvData.skills.length > 0 ||
+    cvData.certifications.length > 0;
+
+  if (!hasOtherData && cvData.summary.bio && cvData.summary.bio.length > 60) {
+    const sentences = cvData.summary.bio
+      .split(/[\n.،؛•]+/)
+      .map(s => s.trim())
+      .filter(s => s.length >= 4);
+
+    const remainingSummary = [];
+    sentences.forEach((sent, idx) => {
+      const predicted = classifyLineSemantically(sent);
+      if (predicted === 'skills') {
+        cvData.skills.push({
+          id: Date.now() + 900 + idx,
+          name: sent,
+          category: /حاسوب|كمبيوتر|أوفيس|برمجة|react|python|excel/i.test(sent)
+            ? (isAr ? 'تقنية ومهنية' : 'Technical')
+            : (isAr ? 'شخصية ومهنية' : 'Soft'),
+          level: ''
+        });
+      } else if (predicted === 'education') {
+        cvData.education.push({ id: Date.now() + 920 + idx, degree: sent, institution: '', major: '', start: '', end: '', gpa: '' });
+      } else if (predicted === 'certifications') {
+        cvData.certifications.push({ id: Date.now() + 940 + idx, title: sent, issuer: '', date: '', link: '' });
+      } else if (predicted === 'experience') {
+        cvData.experience.push({ id: Date.now() + 960 + idx, role: sent.length > 55 ? sent.slice(0, 52) + '...' : sent, company: '', location: '', start: '', end: '', description: sent.length > 55 ? sent : '', achievements: '' });
+      } else if (predicted === 'languages') {
+        cvData.languages.push({ id: Date.now() + 980 + idx, name: sent, level: '' });
+      } else if (predicted === 'projects') {
+        cvData.projects.push({ id: Date.now() + 990 + idx, name: sent, tech: '', description: '', link: '' });
+      } else if (predicted === 'volunteering') {
+        cvData.volunteering.push({ id: Date.now() + 995 + idx, title: sent, org: '', period: '', details: '' });
+      } else {
+        remainingSummary.push(sent);
+      }
+    });
+    cvData.summary.bio = remainingSummary.join('. ');
+  }
+
+  return result;
+}
+
+// ============================================================================
+// OPTIONAL GEMINI AI PARSER (Only runs with explicit user consent + own API key)
+// ============================================================================
+async function parseCVWithGeminiAI(rawText, apiKey, isAr) {
+  const prompt = `You are a strict, accurate CV data extraction engine. Extract ALL information from the following CV text WITHOUT inventing, fabricating, or omitting any real detail. Return ONLY valid JSON matching this exact structure:
+{
+  "personal": { "fullName": "", "jobTitle": "", "email": "", "phone": "", "location": "", "address": "", "linkedin": "", "github": "", "website": "" },
+  "summary": { "bio": "", "objective": "", "specialty": "", "yearsExp": "" },
+  "education": [{ "degree": "", "institution": "", "major": "", "start": "", "end": "", "gpa": "" }],
+  "experience": [{ "role": "", "company": "", "location": "", "start": "", "end": "", "description": "", "achievements": "" }],
+  "skills": [{ "name": "", "category": "", "level": "" }],
+  "certifications": [{ "title": "", "issuer": "", "date": "", "link": "" }],
+  "projects": [{ "name": "", "tech": "", "description": "", "link": "" }],
+  "languages": [{ "name": "", "level": "" }],
+  "volunteering": [{ "title": "", "org": "", "period": "", "details": "" }],
+  "references": [{ "name": "", "role": "", "contact": "" }],
+  "customSections": [{ "title": "", "content": "" }]
+}
+Rules:
+1. Put every piece of data in its exact logical section (e.g., training courses go to certifications, computer/soft abilities go to skills).
+2. If there is extra data that does not fit the standard fields (like Nationality, Date of Birth, Awards, Hobbies, Military info), create an entry in "customSections" with an appropriate title in ${isAr ? 'Arabic' : 'English'}.
+3. Ignore placeholder dots like "........".
+4. Preserve the original language of the CV text.
+
+CV TEXT:
+${rawText}`;
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey.trim())}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: 'application/json', temperature: 0.1 }
+      })
+    }
+  );
+
+  if (!res.ok) throw new Error('Gemini API request failed');
+  const json = await res.json();
+  const textOut = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!textOut) throw new Error('Empty AI response');
+
+  const data = JSON.parse(textOut);
+  const now = Date.now();
+  const withIds = (arr, offset) => (Array.isArray(arr) ? arr.map((item, i) => ({ ...item, id: now + offset + i })) : []);
+
+  const customSecs = Array.isArray(data.customSections)
+    ? data.customSections
+        .filter(c => c && (c.title || c.content))
+        .map((c, i) => ({ id: `custom_${now}_${i}`, title: c.title || (isAr ? 'معلومات إضافية' : 'Additional Info'), content: c.content || '' }))
+    : [];
+
+  const cvData = {
+    personal: { ...EMPTY_CV.personal, ...(data.personal || {}) },
+    summary: { ...EMPTY_CV.summary, ...(data.summary || {}) },
+    education: withIds(data.education, 100),
+    experience: withIds(data.experience, 200),
+    skills: withIds(data.skills, 300),
+    certifications: withIds(data.certifications, 400),
+    projects: withIds(data.projects, 500),
+    languages: withIds(data.languages, 600),
+    volunteering: withIds(data.volunteering, 700),
+    references: withIds(data.references, 800),
+    customSections: customSecs,
+  };
+
+  const newCustomSectionDefs = customSecs.map(c => ({
+    id: c.id,
+    labelAr: c.title,
+    labelEn: c.title,
+    visible: true,
+    isCustom: true,
+  }));
+
+  return { cvData, newCustomSectionDefs };
+}
+
 // Responsive A4 Scaler (Multi-Page Support): dynamically measures full CV height so 2+ pages are NEVER clipped on screen or PDF print
 function ResponsiveA4Frame({ children, zoomMultiplier = 1, isPrintable = false }) {
   const containerRef = useRef(null);
@@ -913,6 +1084,9 @@ export default function App() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [importingFile, setImportingFile] = useState(false);
+  const [aiMode, setAiMode] = useState('local'); // local | gemini
+  const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [aiConsent, setAiConsent] = useState(false);
   const [atsTemplate, setAtsTemplate] = useState('ats-harvard');
   const [jobDesc, setJobDesc] = useState('');
   const [toast, setToast] = useState('');
@@ -1069,7 +1243,13 @@ export default function App() {
         return;
       }
 
-      const { cvData, newCustomSectionDefs } = parseRawCVText(extractedText, isAr);
+      let parsedResult;
+      if (aiMode === 'gemini' && geminiApiKey.trim() && aiConsent) {
+        parsedResult = await parseCVWithGeminiAI(extractedText, geminiApiKey, isAr);
+      } else {
+        parsedResult = smartLocalAIParse(extractedText, isAr);
+      }
+      const { cvData, newCustomSectionDefs } = parsedResult;
       setCv(cvData);
       setSections(prev => [
         ...prev.filter(s => !s.isCustom),
@@ -1089,24 +1269,35 @@ export default function App() {
     }
   };
 
-  const handleImportPastedText = () => {
+  const handleImportPastedText = async () => {
     if (!pasteText.trim()) return;
-    const { cvData, newCustomSectionDefs } = parseRawCVText(pasteText, isAr);
-    setCv(cvData);
-    if (newCustomSectionDefs.length > 0) {
+    setImportingFile(true);
+    try {
+      let parsedResult;
+      if (aiMode === 'gemini' && geminiApiKey.trim() && aiConsent) {
+        parsedResult = await parseCVWithGeminiAI(pasteText, geminiApiKey, isAr);
+      } else {
+        parsedResult = smartLocalAIParse(pasteText, isAr);
+      }
+      const { cvData, newCustomSectionDefs } = parsedResult;
+      setCv(cvData);
       setSections(prev => [
         ...prev.filter(s => !s.isCustom),
         ...newCustomSectionDefs
       ]);
+      setPasteText('');
+      setShowImportModal(false);
+      setView('builder');
+      notify(
+        newCustomSectionDefs.length > 0
+          ? (isAr ? `تم التحليل بالذكاء الاصطناعي وتوزيع البيانات + ${newCustomSectionDefs.length} قسم مخصص!` : `AI parsed with ${newCustomSectionDefs.length} custom section(s)!`)
+          : (isAr ? 'تم التحليل بالذكاء الاصطناعي وتوزيع جميع الحقول بدقة!' : 'AI parsed and populated all fields!')
+      );
+    } catch {
+      notify(isAr ? 'تعذّر الاتصال بـ Gemini AI. تأكد من مفتاح API أو استخدم المحلل المحلي.' : 'Gemini AI error. Check API key or switch to Local AI.');
+    } finally {
+      setImportingFile(false);
     }
-    setPasteText('');
-    setShowImportModal(false);
-    setView('builder');
-    notify(
-      newCustomSectionDefs.length > 0
-        ? (isAr ? `تم تحليل النص وإضافة ${newCustomSectionDefs.length} قسم مخصص تلقائيًا!` : `Parsed with ${newCustomSectionDefs.length} custom section(s)!`)
-        : (isAr ? 'تم تحليل النص وتعبئة الحقول بنجاح!' : 'Text parsed and fields populated!')
-    );
   };
 
   const handleExportJSON = () => {
@@ -2511,6 +2702,47 @@ export default function App() {
                 <FileUp className="w-5 h-5 text-[#2563EB]" /> {isAr ? 'استيراد سيرة ذاتية سابقة' : 'Import Previous CV'}
               </h2>
               <button onClick={() => setShowImportModal(false)} className="p-1.5 rounded-lg hover:bg-slate-100"><X className="w-4 h-4" /></button>
+            </div>
+
+            {/* AI Parsing Engine Selector */}
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5 text-xs">
+              <div className="font-extrabold text-[#0B1020] flex items-center gap-1.5">
+                <Brain className="w-4 h-4 text-[#7C3AED]" />
+                {isAr ? 'خوارزمية الذكاء الاصطناعي لتحليل وتوزيع البيانات:' : 'AI Parsing & Classification Engine:'}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAiMode('local')}
+                  className={`p-2 rounded-xl border text-start transition ${aiMode === 'local' ? 'bg-[#0B1020] text-white border-[#0B1020]' : 'bg-white text-slate-700 border-slate-200'}`}
+                >
+                  <div className="font-bold flex items-center gap-1"><Cpu className="w-3.5 h-3.5 text-blue-400" /> {isAr ? 'ذكاء محلي (فوري)' : 'Local AI (Offline)'}</div>
+                  <div className="text-[10px] opacity-80 mt-0.5">{isAr ? 'خصوصية 100% داخل المتصفح' : '100% in-browser privacy'}</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAiMode('gemini')}
+                  className={`p-2 rounded-xl border text-start transition ${aiMode === 'gemini' ? 'bg-gradient-to-r from-[#2563EB] to-[#7C3AED] text-white border-transparent' : 'bg-white text-slate-700 border-slate-200'}`}
+                >
+                  <div className="font-bold flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" /> {isAr ? 'Gemini AI المتقدم' : 'Gemini AI Pro'}</div>
+                  <div className="text-[10px] opacity-80 mt-0.5">{isAr ? 'دقة فائقة (بمفتاحك الخاص)' : 'Ultra accuracy (Own Key)'}</div>
+                </button>
+              </div>
+              {aiMode === 'gemini' && (
+                <div className="space-y-2 pt-1">
+                  <input
+                    type="password"
+                    className="w-full border rounded-lg p-2 bg-white text-xs font-mono"
+                    placeholder={isAr ? 'أدخل مفتاح Gemini API Key الخاص بك (يُحفظ مؤقتًا في الذاكرة فقط)' : 'Enter your Gemini API Key (in-memory only)'}
+                    value={geminiApiKey}
+                    onChange={e => setGeminiApiKey(e.target.value)}
+                  />
+                  <label className="flex items-start gap-2 text-[11px] text-slate-600 cursor-pointer">
+                    <input type="checkbox" checked={aiConsent} onChange={e => setAiConsent(e.target.checked)} className="mt-0.5" />
+                    <span>{isAr ? 'أوافق على إرسال نص سيرتي الذاتية إلى Gemini AI لتحليله وتوزيعه في الحقول.' : 'I consent to sending my CV text to Gemini AI for smart parsing.'}</span>
+                  </label>
+                </div>
+              )}
             </div>
 
             <div className="p-4 rounded-xl bg-[#F5F7FB] border-2 border-dashed border-[#2563EB]/40 text-center space-y-2">
