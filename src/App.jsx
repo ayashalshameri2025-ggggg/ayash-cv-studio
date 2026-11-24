@@ -782,8 +782,9 @@ function parseRawCVText(rawText, isAr) {
 
 
 // ============================================================================
-// LOCAL AI SEMANTIC CLASSIFIER (100% In-Browser NLP Scoring — Zero Servers)
-// Automatically classifies unheaded or mixed lines into the right CV sections
+// LOCAL AI SEMANTIC CLASSIFIER v2 (100% In-Browser NLP Engine — Zero Servers)
+// Works on ANY raw, unformatted, or mixed text: cleans, classifies every clause,
+// routes misplaced items to their exact sections, and removes duplicates.
 // ============================================================================
 function classifyLineSemantically(line) {
   const l = line.toLowerCase();
@@ -799,13 +800,13 @@ function classifyLineSemantically(line) {
   };
 
   // Weighted Arabic & English semantic features
-  if (/(جامعة|كلية|معهد|بكالوريوس|ماجستير|دكتوراه|دبلوم|ثانوية|تخرج|معدل|تخصص|bachelor|master|phd|university|college|b\.sc|m\.sc|gpa|degree)/i.test(l)) scores.education += 5;
-  if (/(دورة|دورات|شهادة|شهادات|ورشة|تدريب|مخيم|أكاديمية\s*حسوب|course|certificate|certification|workshop|bootcamp|udemy|coursera)/i.test(l)) scores.certifications += 5;
-  if (/(عملت|العمل\s*في|العمل\s*على|العمل\s*مشرف|موظف|مدير|منسق|مشرف|مهندس|مطور|مدرب|طبيب|محاسب|شركة|مؤسسة|أكاديمية|مستشفى|بنك|محل|مبيعات|توزيع|worked|manager|developer|engineer|coordinator|company|hospital|bank)/i.test(l)) scores.experience += 4;
+  if (/(جامعة|كلية|معهد|بكالوريوس|ماجستير|دكتوراه|دبلوم|ثانوية|تخرج|معدل|تخصص|خريج|bachelor|master|phd|university|college|b\.sc|m\.sc|gpa|degree|graduated)/i.test(l)) scores.education += 5;
+  if (/(دورة|دورات|شهادة|شهادات|ورشة|تدريب|مخيم|أكاديمية\s*حسوب|معتمد|course|certificate|certification|workshop|bootcamp|udemy|coursera|diploma\s*in)/i.test(l)) scores.certifications += 5;
+  if (/(عملت|أعمل|العمل\s*في|العمل\s*على|العمل\s*مشرف|موظف|مدير|منسق|مشرف|مهندس|مطور|مدرب|طبيب|محاسب|شركة|مؤسسة|أكاديمية|مستشفى|بنك|محل|مبيعات|توزيع|سائق|مندوب|worked|working\s*at|manager|developer|engineer|coordinator|company|hospital|bank)/i.test(l)) scores.experience += 4;
   if (/(?:19|20)\d{2}\s*[-–—]\s*(?:(?:19|20)\d{2}|حتى الآن|present|current)/i.test(l)) scores.experience += 3;
-  if (/(يجيد|إجادة|مهارة|مهارات|القدرة\s*على|استخدام\s*الحاسوب|الكمبيوتر|أوفيس|إكسل|وورد|القيادة|التواصل|العمل\s*ضمن\s*فريق|تحمل\s*ضغط|الانضباط|الالتزام|التعامل\s*مع\s*العملاء|برمجة|تصميم|react|python|javascript|excel|word|photoshop|canva|sql|leadership|teamwork)/i.test(l)) scores.skills += 5;
-  if (/(اللغة\s*العربية|اللغة\s*الإنجليزية|العربية|الإنجليزية|الفرنسية|الألمانية|اللغة\s*الأم|ممتاز\s*في\s*الإنجليزية|arabic|english|french|german|native|fluent)/i.test(l) && l.length < 45) scores.languages += 6;
-  if (/(مشروع|منصة|تطبيق|موقع\s*ويب|نظام\s*إلكتروني|تم\s*تطوير|project|platform|built\s*a|developed\s*a|github\.com)/i.test(l)) scores.projects += 4;
+  if (/(يجيد|أجيد|إجادة|مهارة|مهارات|القدرة\s*على|قادر\s*على|استخدام\s*الحاسوب|الكمبيوتر|أوفيس|إكسل|وورد|القيادة|التواصل|العمل\s*ضمن\s*فريق|تحمل\s*ضغط|الانضباط|الالتزام|التعامل\s*مع\s*العملاء|برمجة|تصميم|react|python|javascript|excel|word|photoshop|canva|sql|leadership|teamwork|proficient|skilled)/i.test(l)) scores.skills += 5;
+  if (/(اللغة\s*العربية|اللغة\s*الإنجليزية|العربية|الإنجليزية|الفرنسية|الألمانية|اللغة\s*الأم|ممتاز\s*في\s*الإنجليزية|arabic|english|french|german|native|fluent)/i.test(l) && l.length < 55) scores.languages += 6;
+  if (/(مشروع|منصة|تطبيق|موقع\s*ويب|نظام\s*إلكتروني|تم\s*تطوير|قمت\s*ببناء|project|platform|built\s*a|developed\s*a|github\.com)/i.test(l)) scores.projects += 5;
   if (/(تطوع|تطوعي|مبادرة|جمعية|خيري|مجتمعي|volunteer|initiative|charity|ngo\s*volunteer)/i.test(l)) scores.volunteering += 5;
   if (/(أسعى|أهدف|أطمح|أبحث\s*عن\s*فرصة|ملخص|متخصص\s*في|خبرة\s*عملية\s*في|seeking|passionate|dedicated|objective|looking\s*for)/i.test(l)) scores.summary += 5;
 
@@ -820,53 +821,107 @@ function classifyLineSemantically(line) {
   return bestScore >= 4 ? bestKey : null;
 }
 
-// Enhanced AI Wrapper around parseRawCVText: runs structural parsing + semantic rescue for unheaded lines
+// Smart Local AI Parse: Always cleans, classifies unheaded/mixed text, re-routes misplaced items, and deduplicates
 function smartLocalAIParse(rawText, isAr) {
   const result = parseRawCVText(rawText, isAr);
   const { cvData } = result;
+  const now = Date.now();
 
-  // If the text had NO headings and everything fell into summary.bio, run sentence-level Semantic AI classification!
-  const hasOtherData =
-    cvData.experience.length > 0 ||
-    cvData.education.length > 0 ||
-    cvData.skills.length > 0 ||
-    cvData.certifications.length > 0;
+  // 1. ALWAYS inspect summary.bio sentence-by-sentence to extract misplaced skills, education, experience, courses, languages, projects, volunteering
+  if (cvData.summary.bio && cvData.summary.bio.trim().length > 20) {
+    const clauses = cvData.summary.bio
+      .split(/(?:\n|[.؟!؛•▪]+|\s+-\s+)/)
+      .map(s => s.replace(/^[-•*▪\d.)]+\s*/, '').trim())
+      .filter(s => s.length >= 3);
 
-  if (!hasOtherData && cvData.summary.bio && cvData.summary.bio.length > 60) {
-    const sentences = cvData.summary.bio
-      .split(/[\n.،؛•]+/)
-      .map(s => s.trim())
-      .filter(s => s.length >= 4);
-
-    const remainingSummary = [];
-    sentences.forEach((sent, idx) => {
-      const predicted = classifyLineSemantically(sent);
+    const pureSummary = [];
+    clauses.forEach((clause, idx) => {
+      const predicted = classifyLineSemantically(clause);
       if (predicted === 'skills') {
         cvData.skills.push({
-          id: Date.now() + 900 + idx,
-          name: sent,
-          category: /حاسوب|كمبيوتر|أوفيس|برمجة|react|python|excel/i.test(sent)
+          id: now + 900 + idx,
+          name: clause,
+          category: /حاسوب|كمبيوتر|أوفيس|إكسل|وورد|برمجة|تصميم|react|python|excel|word/i.test(clause)
             ? (isAr ? 'تقنية ومهنية' : 'Technical')
+            : /إدارة|إشراف|قيادة|تنظيم/i.test(clause)
+            ? (isAr ? 'إدارية' : 'Management')
             : (isAr ? 'شخصية ومهنية' : 'Soft'),
           level: ''
         });
       } else if (predicted === 'education') {
-        cvData.education.push({ id: Date.now() + 920 + idx, degree: sent, institution: '', major: '', start: '', end: '', gpa: '' });
+        const parts = clause.split(/[–—\-|]/).map(p => p.trim()).filter(Boolean);
+        cvData.education.push({ id: now + 920 + idx, degree: parts[0] || clause, institution: parts.slice(1).join(' - '), major: '', start: '', end: '', gpa: '' });
       } else if (predicted === 'certifications') {
-        cvData.certifications.push({ id: Date.now() + 940 + idx, title: sent, issuer: '', date: '', link: '' });
+        const parts = clause.split(/[–—\-|]/).map(p => p.trim()).filter(Boolean);
+        cvData.certifications.push({ id: now + 940 + idx, title: parts[0] || clause, issuer: parts.slice(1).join(' - '), date: '', link: '' });
       } else if (predicted === 'experience') {
-        cvData.experience.push({ id: Date.now() + 960 + idx, role: sent.length > 55 ? sent.slice(0, 52) + '...' : sent, company: '', location: '', start: '', end: '', description: sent.length > 55 ? sent : '', achievements: '' });
+        const splitMatch = clause.match(/^([^،,:–—\-]{6,55})[،,:–—\-]\s*(.+)$/);
+        cvData.experience.push({
+          id: now + 960 + idx,
+          role: splitMatch ? splitMatch[1].trim() : (clause.length > 55 ? clause.slice(0, 52) + '...' : clause),
+          company: '',
+          location: '',
+          start: '',
+          end: '',
+          description: splitMatch ? splitMatch[2].trim() : (clause.length > 55 ? clause : ''),
+          achievements: ''
+        });
       } else if (predicted === 'languages') {
-        cvData.languages.push({ id: Date.now() + 980 + idx, name: sent, level: '' });
+        const parts = clause.split(/[:：\-–(]/);
+        cvData.languages.push({ id: now + 980 + idx, name: (parts[0] || clause).trim(), level: (parts[1] || '').replace(/\)$/, '').trim() });
       } else if (predicted === 'projects') {
-        cvData.projects.push({ id: Date.now() + 990 + idx, name: sent, tech: '', description: '', link: '' });
+        const parts = clause.split(/[:：–—\-]/);
+        cvData.projects.push({ id: now + 990 + idx, name: (parts[0] || clause).trim(), tech: '', description: parts.slice(1).join(' - ').trim(), link: '' });
       } else if (predicted === 'volunteering') {
-        cvData.volunteering.push({ id: Date.now() + 995 + idx, title: sent, org: '', period: '', details: '' });
+        cvData.volunteering.push({ id: now + 995 + idx, title: clause, org: '', period: '', details: '' });
       } else {
-        remainingSummary.push(sent);
+        pureSummary.push(clause);
       }
     });
-    cvData.summary.bio = remainingSummary.join('. ');
+    cvData.summary.bio = pureSummary.join('. ');
+  }
+
+  // 2. Cross-section smart cleanup: move any skill-like item accidentally placed in experience -> skills
+  const cleanExp = [];
+  cvData.experience.forEach((exp, idx) => {
+    const fullText = `${exp.role} ${exp.description}`.trim();
+    if (/^(?:يجيد|أجيد|إجادة|القدرة\s*على|مهارة|مهارات)\s+/i.test(fullText) && !exp.company) {
+      cvData.skills.push({
+        id: now + 1100 + idx,
+        name: fullText.replace(/\.$/, ''),
+        category: /حاسوب|كمبيوتر|أوفيس|برمجة|قيادة|تسويق/i.test(fullText) ? (isAr ? 'تقنية ومهنية' : 'Technical') : (isAr ? 'شخصية' : 'Soft'),
+        level: ''
+      });
+    } else {
+      cleanExp.push(exp);
+    }
+  });
+  cvData.experience = cleanExp;
+
+  // 3. Deduplicate skills & languages cleanly
+  const seenSkills = new Set();
+  cvData.skills = cvData.skills.filter(s => {
+    const key = (s.name || '').trim().toLowerCase();
+    if (!key || seenSkills.has(key)) return false;
+    seenSkills.add(key);
+    return true;
+  });
+
+  const seenLangs = new Set();
+  cvData.languages = cvData.languages.filter(l => {
+    const key = (l.name || '').trim().toLowerCase();
+    if (!key || seenLangs.has(key)) return false;
+    seenLangs.add(key);
+    return true;
+  });
+
+  // 4. Re-check Job Title derivation if still empty
+  if (!cvData.personal.jobTitle) {
+    if (cvData.education[0]?.degree) {
+      cvData.personal.jobTitle = cvData.education[0].degree.replace(/^شهادة\s+/, '');
+    } else if (cvData.experience[0]?.role) {
+      cvData.personal.jobTitle = cvData.experience[0].role;
+    }
   }
 
   return result;
@@ -2781,7 +2836,7 @@ export default function App() {
                 disabled={!pasteText.trim()}
                 className="w-full py-2.5 rounded-xl bg-[#0B1020] text-white text-xs font-bold disabled:opacity-40 hover:bg-[#2563EB] transition"
               >
-                {isAr ? 'تحليل النص وتعبئة النموذج تلقائيًا' : 'Parse Text & Fill Form'}
+                {importingFile ? (isAr ? 'جاري التحليل والترتيب بالذكاء الاصطناعي...' : 'AI Parsing & Organizing...') : (isAr ? 'ترتيب وتوزيع النص بالذكاء الاصطناعي' : 'AI Smart Parse & Organize Text')}
               </button>
             </div>
           </div>
