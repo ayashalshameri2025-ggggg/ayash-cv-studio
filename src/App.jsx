@@ -780,41 +780,55 @@ function parseRawCVText(rawText, isAr) {
   return { cvData: parsed, newCustomSectionDefs };
 }
 
-// Responsive A4 Scaler: guarantees ZERO horizontal scroll on iPhone, Android, iPad, Desktop
+// Responsive A4 Scaler (Multi-Page Support): dynamically measures full CV height so 2+ pages are NEVER clipped on screen or PDF print
 function ResponsiveA4Frame({ children, zoomMultiplier = 1, isPrintable = false }) {
   const containerRef = useRef(null);
+  const contentRef = useRef(null);
   const [containerWidth, setContainerWidth] = useState(360);
+  const [contentHeight, setContentHeight] = useState(1123);
   const A4_WIDTH_PX = 794; // 210mm at 96dpi
   const A4_HEIGHT_PX = 1123; // 297mm at 96dpi
 
   useEffect(() => {
-    const updateWidth = () => {
+    const updateDims = () => {
       if (containerRef.current) {
         setContainerWidth(containerRef.current.clientWidth);
       }
+      if (contentRef.current) {
+        const h = contentRef.current.scrollHeight || contentRef.current.offsetHeight || A4_HEIGHT_PX;
+        setContentHeight(Math.max(A4_HEIGHT_PX, h));
+      }
     };
-    updateWidth();
-    const ro = new ResizeObserver(updateWidth);
+    updateDims();
+    const ro = new ResizeObserver(updateDims);
     if (containerRef.current) ro.observe(containerRef.current);
-    window.addEventListener('resize', updateWidth);
+    if (contentRef.current) ro.observe(contentRef.current);
+    window.addEventListener('resize', updateDims);
     return () => {
       ro.disconnect();
-      window.removeEventListener('resize', updateWidth);
+      window.removeEventListener('resize', updateDims);
     };
-  }, []);
+  }, [children]);
 
   const fitScale = Math.min(1, (containerWidth - 8) / A4_WIDTH_PX);
   const finalScale = Math.max(0.28, fitScale * zoomMultiplier);
   const scaledW = Math.round(A4_WIDTH_PX * finalScale);
-  const scaledH = Math.round(A4_HEIGHT_PX * finalScale);
+  const scaledH = Math.round(contentHeight * finalScale);
+  const pageCount = Math.max(1, Math.ceil((contentHeight - 20) / A4_HEIGHT_PX));
 
   return (
-    <div ref={containerRef} className="w-full flex justify-center overflow-hidden print-main">
+    <div ref={containerRef} className="w-full flex flex-col items-center overflow-x-hidden print-main">
+      {pageCount > 1 && (
+        <div className="mb-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[#2563EB] text-[11px] font-bold no-print">
+          {pageCount} A4 Pages
+        </div>
+      )}
       <div
-        className={`relative overflow-hidden ${isPrintable ? 'print-reset-wrapper' : ''}`}
-        style={{ width: `${scaledW}px`, minHeight: `${scaledH}px` }}
+        className={`relative ${isPrintable ? 'print-reset-wrapper' : ''}`}
+        style={{ width: `${scaledW}px`, height: `${scaledH}px` }}
       >
         <div
+          ref={contentRef}
           className={isPrintable ? 'print-reset-wrapper' : ''}
           style={{
             width: `${A4_WIDTH_PX}px`,
@@ -826,6 +840,18 @@ function ResponsiveA4Frame({ children, zoomMultiplier = 1, isPrintable = false }
           }}
         >
           {children}
+          {/* Visual page-break guide lines on screen only */}
+          {Array.from({ length: pageCount - 1 }).map((_, idx) => (
+            <div
+              key={idx}
+              className="no-print pointer-events-none absolute left-0 right-0 border-t-2 border-dashed border-blue-400/70 flex justify-end"
+              style={{ top: `${(idx + 1) * A4_HEIGHT_PX}px` }}
+            >
+              <span className="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-b">
+                Page {idx + 2}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -1426,7 +1452,7 @@ export default function App() {
       const finalAtsIds = [...atsOrder, ...customIds];
 
       return (
-        <div id={mini ? undefined : 'cv-a4-preview'} dir={dir} className={`bg-white text-black ${fontClass} ${textSize} w-full min-h-[297mm] shadow-xl border border-slate-200 overflow-hidden print-container p-8 space-y-4`}>
+        <div id={mini ? undefined : 'cv-a4-preview'} dir={dir} className={`bg-white text-black ${fontClass} ${textSize} w-full min-h-[297mm] shadow-xl border border-slate-200 print-container p-8 space-y-4`}>
           <div className={`${isCentered ? 'text-center' : 'text-start'} pb-3 border-b-2 border-black`}>
             <h1 className="text-2xl font-extrabold uppercase tracking-wide text-black">
               {data.personal.fullName || (isAr ? 'الاسم الكامل' : 'YOUR FULL NAME')}
@@ -1450,7 +1476,7 @@ export default function App() {
     if (tplId === 'creative') {
       const sideIds = ['skills', 'languages', 'certifications', 'references'];
       return (
-        <div id={mini ? undefined : 'cv-a4-preview'} dir={dir} className={`bg-white text-[#0B1020] ${fontClass} ${textSize} w-full min-h-[297mm] shadow-xl border border-slate-200 overflow-hidden print-container grid grid-cols-12`}>
+        <div id={mini ? undefined : 'cv-a4-preview'} dir={dir} className={`bg-white text-[#0B1020] ${fontClass} ${textSize} w-full min-h-[297mm] shadow-xl border border-slate-200 print-container grid grid-cols-12`}>
           <div className={`col-span-4 text-white ${padClass} ${gapClass}`} style={{ backgroundColor: accent }}>
             <div className="text-center space-y-2 pb-4 border-b border-white/25">
               {showPhotoHere && <img src={data.personal.photo} alt="Profile" className={`${photoSizeCls} ${photoShapeCls} object-cover border-4 border-white/80 shadow-lg mx-auto`} />}
@@ -1473,7 +1499,7 @@ export default function App() {
 
     if (tplId === 'classic' || tplId === 'academic') {
       return (
-        <div id={mini ? undefined : 'cv-a4-preview'} dir={dir} className={`bg-white text-[#0B1020] ${fontClass} ${textSize} w-full min-h-[297mm] shadow-xl border border-slate-200 overflow-hidden print-container`}>
+        <div id={mini ? undefined : 'cv-a4-preview'} dir={dir} className={`bg-white text-[#0B1020] ${fontClass} ${textSize} w-full min-h-[297mm] shadow-xl border border-slate-200 print-container`}>
           <div className={`${padClass} text-center border-b-4 border-double`} style={{ borderColor: accent }}>
             {showPhotoHere && <img src={data.personal.photo} alt="Profile" className={`${photoSizeCls} ${photoShapeCls} object-cover border-2 border-slate-200 shadow mx-auto mb-3`} />}
             <h1 className="text-2xl font-extrabold text-[#0B1020]">{data.personal.fullName || (isAr ? 'الاسم الكامل' : 'Your Full Name')}</h1>
@@ -1491,7 +1517,7 @@ export default function App() {
 
     if (tplId === 'minimal') {
       return (
-        <div id={mini ? undefined : 'cv-a4-preview'} dir={dir} className={`bg-white text-[#0B1020] ${fontClass} ${textSize} w-full min-h-[297mm] shadow-xl border border-slate-200 overflow-hidden print-container`}>
+        <div id={mini ? undefined : 'cv-a4-preview'} dir={dir} className={`bg-white text-[#0B1020] ${fontClass} ${textSize} w-full min-h-[297mm] shadow-xl border border-slate-200 print-container`}>
           <div className={`${padClass} flex items-center justify-between gap-4 border-b border-slate-200`}>
             <div className="flex items-center gap-4">
               {showPhotoHere && <img src={data.personal.photo} alt="Profile" className={`${photoSizeCls} ${photoShapeCls} object-cover border border-slate-200 shrink-0`} />}
@@ -1512,7 +1538,7 @@ export default function App() {
     if (tplId === 'international') {
       const bottomIds = ['skills', 'languages'];
       return (
-        <div id={mini ? undefined : 'cv-a4-preview'} dir={dir} className={`bg-white text-[#0B1020] ${fontClass} ${textSize} w-full min-h-[297mm] shadow-xl border border-slate-200 overflow-hidden print-container ${padClass} ${gapClass}`}>
+        <div id={mini ? undefined : 'cv-a4-preview'} dir={dir} className={`bg-white text-[#0B1020] ${fontClass} ${textSize} w-full min-h-[297mm] shadow-xl border border-slate-200 print-container ${padClass} ${gapClass}`}>
           <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-4">
             {showPhotoHere && <img src={data.personal.photo} alt="Profile" className={`${photoSizeCls} ${photoShapeCls} object-cover border-2 border-white shadow shrink-0`} />}
             <div>
@@ -1538,7 +1564,7 @@ export default function App() {
     const headerDark = ['executive', 'technical'].includes(tplId);
 
     return (
-      <div id={mini ? undefined : 'cv-a4-preview'} dir={dir} className={`bg-white text-[#0B1020] ${fontClass} ${textSize} w-full min-h-[297mm] shadow-xl border border-slate-200 overflow-hidden print-container`}>
+      <div id={mini ? undefined : 'cv-a4-preview'} dir={dir} className={`bg-white text-[#0B1020] ${fontClass} ${textSize} w-full min-h-[297mm] shadow-xl border border-slate-200 print-container`}>
         {tplId === 'medical' && <div className="h-2.5 w-full bg-[#0F766E]" />}
         {tplId === 'graduate' && <div className="h-2 w-full" style={{ backgroundColor: accent }} />}
         <div className={`${padClass} ${headerDark ? 'text-white' : 'border-b-2'}`} style={{ backgroundColor: headerBg, borderColor: headerDark ? 'transparent' : accent }}>

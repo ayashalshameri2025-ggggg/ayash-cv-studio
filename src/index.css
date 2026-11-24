@@ -21,13 +21,14 @@
 @media print {
   @page {
     size: A4;
-    margin: 0;
+    margin: 8mm 0;
   }
-  html, body {
+  html, body, #root {
     background: #ffffff !important;
     margin: 0 !important;
     padding: 0 !important;
     width: 210mm !important;
+    height: auto !important;
     overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -37,26 +38,42 @@
   }
   .print-main {
     display: block !important;
+    position: static !important;
     max-width: none !important;
     width: 210mm !important;
+    height: auto !important;
     margin: 0 !important;
     padding: 0 !important;
+    overflow: visible !important;
   }
   .print-reset-wrapper {
+    position: static !important;
     width: 210mm !important;
     height: auto !important;
+    min-height: 0 !important;
     transform: none !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
   }
   .print-container {
+    position: static !important;
     width: 210mm !important;
-    min-height: 297mm !important;
+    min-height: 0 !important;
+    height: auto !important;
     margin: 0 !important;
     box-shadow: none !important;
     transform: none !important;
     border: none !important;
     border-radius: 0 !important;
+    overflow: visible !important;
+  }
+  .print-container h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  .print-container > div > div {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }
